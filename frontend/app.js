@@ -414,39 +414,51 @@ function saveProde() {
   try {
     const predictions = {};
     let errors = [];
+    let matchIndex = 0;
     
-    MATCHES.forEach((match, i) => {
-      const homeVal = document.getElementById(`pred-home-${i}`).value.trim();
-      const awayVal = document.getElementById(`pred-away-${i}`).value.trim();
+    // Recorrer cada grupo
+    Object.keys(MATCHES).forEach(groupName => {
+      const matches = MATCHES[groupName];
       
-      // Ambos vacíos es ok
-      if (homeVal === '' && awayVal === '') {
-        predictions[i] = { home: '', away: '' };
-        return;
-      }
-      
-      // Ambos deben estar llenos
-      if ((homeVal === '') !== (awayVal === '')) {
-        errors.push(`Partido ${i + 1}: Complete ambos marcadores`);
-        return;
-      }
-      
-      // Deben ser números
-      if (!/^\d+$/.test(homeVal) || !/^\d+$/.test(awayVal)) {
-        errors.push(`Partido ${i + 1}: Los marcadores deben ser números`);
-        return;
-      }
-      
-      const home = parseInt(homeVal);
-      const away = parseInt(awayVal);
-      
-      // Rango razonable
-      if (home > 20 || away > 20) {
-        errors.push(`Partido ${i + 1}: Marcador poco realista`);
-        return;
-      }
-      
-      predictions[i] = { home, away };
+      // Recorrer cada partido del grupo
+      matches.forEach(match => {
+        const homeVal = document.getElementById(`pred-home-${matchIndex}`).value.trim();
+        const awayVal = document.getElementById(`pred-away-${matchIndex}`).value.trim();
+        
+        // Ambos vacíos es ok
+        if (homeVal === '' && awayVal === '') {
+          predictions[matchIndex] = { home: '', away: '' };
+          matchIndex++;
+          return;
+        }
+        
+        // Ambos deben estar llenos
+        if ((homeVal === '') !== (awayVal === '')) {
+          errors.push(`Partido ${matchIndex + 1}: Complete ambos marcadores`);
+          matchIndex++;
+          return;
+        }
+        
+        // Deben ser números
+        if (!/^\d+$/.test(homeVal) || !/^\d+$/.test(awayVal)) {
+          errors.push(`Partido ${matchIndex + 1}: Los marcadores deben ser números`);
+          matchIndex++;
+          return;
+        }
+        
+        const home = parseInt(homeVal);
+        const away = parseInt(awayVal);
+        
+        // Rango razonable
+        if (home > 20 || away > 20) {
+          errors.push(`Partido ${matchIndex + 1}: Marcador poco realista`);
+          matchIndex++;
+          return;
+        }
+        
+        predictions[matchIndex] = { home, away };
+        matchIndex++;
+      });
     });
     
     if (errors.length > 0) {
