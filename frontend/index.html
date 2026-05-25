@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>INSC – Prode Copa Mundial 2026</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- ===== LOADING OVERLAY ===== -->
+<div id="loading-overlay" class="loading-overlay hidden">
+    <div class="spinner"></div>
+    <div class="loading-text">Cargando...</div>
+</div>
+
+<!-- ===== TOAST NOTIFICATIONS ===== -->
+<div id="toast-container" class="toast-container"></div>
+
+<!-- ===== NAVBAR ===== -->
+<nav id="navbar" class="navbar">
+  <div class="nav-logo">
+    <span>⚽ PRODE 2026</span>
+  </div>
+  <div class="nav-links">
+    <button class="nav-link" onclick="showPage('page-home')">Inicio</button>
+    <button class="nav-link" onclick="showPage('page-prode')">PRODE</button>
+    <button class="nav-link" onclick="showPage('page-prizes')">Premios</button>
+    <button class="nav-link" id="nav-admin" onclick="showPage('page-admin')" style="display:none;">Admin</button>
+  </div>
+  <div class="nav-right">
+    <div class="nav-user" id="nav-user-text">Usuario</div>
+    <button class="btn-logout" onclick="doLogout()">Logout</button>
+  </div>
+</nav>
+
+<!-- ===== LOGIN PAGE ===== -->
+<div id="page-login" class="page active">
+  <div class="login-container">
+    <div class="login-card">
+      <h1 class="login-title">⚽ PRODE Copa Mundial 2026</h1>
+      <p class="login-subtitle">Haz tus pronósticos y compite</p>
+      
+      <form class="login-form" onsubmit="handleLogin(event)">
+        <div class="form-group">
+          <label for="login-dni">DNI</label>
+          <input type="text" id="login-dni" placeholder="Ej: 12345678" required>
+          <span class="error-text" id="dni-error"></span>
+        </div>
+        
+        <div class="form-group">
+          <label for="login-pass">Contraseña</label>
+          <input type="password" id="login-pass" placeholder="Ingresa tu contraseña" required>
+          <span class="error-text" id="pass-error"></span>
+        </div>
+
+        <div id="login-attempts-warning" class="warning-box hidden">
+          <strong>⚠️ Intentos restantes:</strong> <span id="attempts-remaining">5</span>
+        </div>
+        
+        <button type="submit" class="btn-primary" id="login-btn">Iniciar Sesión</button>
+      </form>
+
+      <div class="login-footer">
+        <p>¿No tienes cuenta? <a href="#" onclick="showRegisterModal(event)">Regístrate</a></p>
+      </div>
+
+      <div class="login-info">
+        <p>ℹ️ Ingresa tu DNI como usuario y contraseña</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== HOME PAGE ===== -->
+<div id="page-home" class="page">
+  <div class="hero-banner">
+    <div class="hero-content">
+      <h1>PRODE Copa Mundial 2026</h1>
+      <p>Haz tus pronósticos, acumula puntos y gana premios increíbles</p>
+      <div class="hero-actions">
+        <button class="btn-hero primary" onclick="showPage('page-prode')">Ir al PRODE</button>
+        <button class="btn-hero outline" onclick="showPage('page-prizes')">Ver Premios</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-content">
+    <div class="info-section">
+      <h2>¿Cómo Funciona?</h2>
+      <div class="info-grid">
+        <div class="info-card">
+          <div class="info-icon">1️⃣</div>
+          <h3>Pronóstica</h3>
+          <p>Adivina el resultado de cada partido</p>
+        </div>
+        <div class="info-card">
+          <div class="info-icon">2️⃣</div>
+          <h3>Acumula Puntos</h3>
+          <p>5 puntos por cada acierto</p>
+        </div>
+        <div class="info-card">
+          <div class="info-icon">3️⃣</div>
+          <h3>Compite</h3>
+          <p>Sube en el ranking y gana premios</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== PRODE PAGE ===== -->
+<div id="page-prode" class="page">
+  <div class="page-content">
+    <h1>Mi PRODE</h1>
+    
+    <div class="prode-header">
+      <div class="status-indicator" id="status-indicator">
+        <span class="dot"></span>
+        <span id="status-text">Cambios guardados</span>
+      </div>
+    </div>
+
+    <div class="matches-container" id="matches-container">
+      <!-- Se genera con JavaScript -->
+    </div>
+
+    <div class="prode-actions">
+      <button class="btn-primary" onclick="saveProdeWithLoader()">💾 Guardar Pronósticos</button>
+      <button class="btn-secondary" onclick="showPage('page-home')">Volver</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== PRIZES PAGE ===== -->
+<div id="page-prizes" class="page">
+  <div class="page-content">
+    <h1>Premios y Ranking</h1>
+
+    <!-- TABLA DE RANKING -->
+    <div class="ranking-section">
+      <h2>Tabla de Posiciones</h2>
+      <div id="top-three" class="top-three">
+        <!-- Se genera con JavaScript -->
+      </div>
+      
+      <div class="ranking-table">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Nombre</th>
+              <th>Aciertos</th>
+              <th>Puntos</th>
+              <th>Acción</th>
+            </tr>
+          </thead>
+          <tbody id="scores-tbody">
+            <!-- Se genera con JavaScript -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- PREMIOS -->
+    <div class="prizes-section">
+      <h2>Premios PRODE</h2>
+      <div class="prizes-grid" id="prizes-grid">
+        <!-- Se genera con JavaScript -->
+      </div>
+    </div>
+
+    <button class="btn-secondary" onclick="showPage('page-home')" style="margin-top:20px;">Volver</button>
+  </div>
+</div>
+
+<!-- ===== ADMIN PAGE ===== -->
+<div id="page-admin" class="page">
+  <div class="page-content">
+    <h1>Panel de Administración</h1>
+
+    <div class="admin-tabs">
+      <button class="admin-tab-btn active" onclick="switchAdminTab('users')">👥 Usuarios</button>
+      <button class="admin-tab-btn" onclick="switchAdminTab('results')">📊 Resultados</button>
+      <button class="admin-tab-btn" onclick="switchAdminTab('scores')">🏆 Puntajes</button>
+      <button class="admin-tab-btn" onclick="switchAdminTab('logs')">📋 Auditoría</button>
+    </div>
+
+    <!-- TAB: USUARIOS -->
+    <div id="admin-users-tab" class="admin-tab active">
+      <div style="margin-bottom:20px;">
+        <button class="btn-primary" onclick="openAddUserModal()">➕ Agregar Usuario</button>
+      </div>
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>DNI</th>
+            <th>Nombre</th>
+            <th>Email</th>
+            <th>Pagado</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="admin-users-tbody">
+          <!-- Se genera con JavaScript -->
+        </tbody>
+      </table>
+    </div>
+
+    <!-- TAB: RESULTADOS -->
+    <div id="admin-results-tab" class="admin-tab">
+      <h3>Ingresar Resultados de Partidos</h3>
+      <div class="results-form" id="results-form">
+        <!-- Se genera con JavaScript -->
+      </div>
+      <button class="btn-primary" onclick="saveResultsWithLoader()">Guardar Resultados</button>
+    </div>
+
+    <!-- TAB: PUNTAJES -->
+    <div id="admin-scores-tab" class="admin-tab">
+      <h3>Gestionar Puntajes</h3>
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>Nombre</th>
+            <th>DNI</th>
+            <th>Aciertos</th>
+            <th>Puntos Auto</th>
+            <th>Puntos Manual</th>
+          </tr>
+        </thead>
+        <tbody id="admin-scores-tbody">
+          <!-- Se genera con JavaScript -->
+        </tbody>
+      </table>
+      <button class="btn-primary" onclick="saveAdminScores()" style="margin-top:20px;">Guardar Puntajes</button>
+    </div>
+
+    <!-- TAB: AUDITORÍA -->
+    <div id="admin-logs-tab" class="admin-tab">
+      <h3>Registro de Cambios</h3>
+      <div class="logs-controls">
+        <button class="btn-secondary" onclick="clearAuditLogs()">🗑️ Limpiar Logs</button>
+        <button class="btn-secondary" onclick="downloadAuditLogs()">📥 Descargar CSV</button>
+      </div>
+      <div class="logs-container" id="logs-container">
+        <!-- Se genera con JavaScript -->
+      </div>
+    </div>
+
+    <button class="btn-secondary" onclick="showPage('page-home')" style="margin-top:20px;">Volver</button>
+  </div>
+</div>
+
+<!-- ===== MODALS ===== -->
+
+<!-- Modal: Editar Usuario -->
+<div id="modal-edit-user" class="modal hidden">
+  <div class="modal-overlay" onclick="closeModal('modal-edit-user')"></div>
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2>Editar Usuario</h2>
+      <button class="modal-close" onclick="closeModal('modal-edit-user')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>DNI</label>
+        <input type="text" id="eu-dni" disabled>
+      </div>
+      <div class="form-group">
+        <label>Nombre</label>
+        <input type="text" id="eu-nombre" placeholder="Nombre completo">
+        <span class="error-text" id="eu-nombre-error"></span>
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="eu-email" placeholder="correo@ejemplo.com">
+        <span class="error-text" id="eu-email-error"></span>
+      </div>
+      <div class="form-group">
+        <label>Contraseña</label>
+        <input type="password" id="eu-pass" placeholder="Nueva contraseña (dejar vacío para no cambiar)">
+        <span class="error-text" id="eu-pass-error"></span>
+      </div>
+      <div class="form-group">
+        <label>
+          <input type="checkbox" id="eu-paid"> Pagado
+        </label>
+      </div>
+      <div class="form-group">
+        <label>Puntaje Manual (override)</label>
+        <input type="number" id="eu-points" placeholder="Dejar vacío para auto">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeModal('modal-edit-user')">Cancelar</button>
+      <button class="btn-primary" onclick="saveEditUser()">Guardar</button>
+      <button class="btn-danger" onclick="deleteCurrentUser()">🗑️ Eliminar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Confirmación -->
+<div id="modal-confirm" class="modal hidden">
+  <div class="modal-overlay" onclick="closeModal('modal-confirm')"></div>
+  <div class="modal-content modal-small">
+    <div class="modal-header">
+      <h2 id="confirm-title">Confirmar Acción</h2>
+      <button class="modal-close" onclick="closeModal('modal-confirm')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p id="confirm-message"></p>
+      <div id="confirm-warning" class="warning-box hidden">
+        <strong>⚠️ Esta acción no se puede deshacer</strong>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" id="confirm-cancel" onclick="closeModal('modal-confirm')">Cancelar</button>
+      <button class="btn-danger" id="confirm-accept">Aceptar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Agregar Usuario -->
+<div id="modal-add-user" class="modal hidden">
+  <div class="modal-overlay" onclick="closeModal('modal-add-user')"></div>
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2>Agregar Usuario</h2>
+      <button class="modal-close" onclick="closeModal('modal-add-user')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>DNI</label>
+        <input type="text" id="au-dni" placeholder="Ej: 12345678">
+        <span class="error-text" id="au-dni-error"></span>
+      </div>
+      <div class="form-group">
+        <label>Nombre</label>
+        <input type="text" id="au-nombre" placeholder="Nombre completo">
+        <span class="error-text" id="au-nombre-error"></span>
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="au-email" placeholder="correo@ejemplo.com">
+        <span class="error-text" id="au-email-error"></span>
+      </div>
+      <div class="form-group">
+        <label>Contraseña</label>
+        <input type="password" id="au-pass" placeholder="Mínimo 6 caracteres">
+        <span class="error-text" id="au-pass-error"></span>
+      </div>
+      <div class="form-group">
+        <label>
+          <input type="checkbox" id="au-paid"> Pagado
+        </label>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeModal('modal-add-user')">Cancelar</button>
+      <button class="btn-primary" onclick="saveAddUser()">Agregar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Ver Predicciones -->
+<div id="modal-view-predictions" class="modal hidden">
+  <div class="modal-overlay" onclick="closeModal('modal-view-predictions')"></div>
+  <div class="modal-content modal-large">
+    <div class="modal-header">
+      <h2>Pronósticos del Participante</h2>
+      <button class="modal-close" onclick="closeModal('modal-view-predictions')">&times;</button>
+    </div>
+    <div class="modal-body" id="modal-view-predictions-content">
+      <!-- Se genera con JavaScript -->
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeModal('modal-view-predictions')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Scripts -->
+<script src="config.js"></script>
+<script src="utils.js"></script>
+<script src="app.js"></script>
+<script src="app2.js"></script>
+
+</body>
+</html>
