@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
+const path = require('path');
 require('dotenv').config();
 
 const app = express();
@@ -10,6 +11,9 @@ app.use(cors({
   credentials: true
 }));
 app.use(express.json());
+
+// SERVIR FRONTEND ESTÁTICO
+app.use(express.static(path.join(__dirname, '../frontend')));
 
 if (process.env.MONGODB_URI) {
   mongoose.connect(process.env.MONGODB_URI)
@@ -29,6 +33,11 @@ app.use('/api/predictions', predictionsRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: '✅ Server OK' });
+});
+
+// SERVIR INDEX.HTML PARA CUALQUIER RUTA NO COINCIDIDA
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../frontend/index.html'));
 });
 
 app.use((err, req, res, next) => {
