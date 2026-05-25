@@ -37,7 +37,7 @@ html {
 
 body {
   font-family: 'Barlow', sans-serif;
-  background: var(--gris);
+  background: var(--blanco);
   color: var(--text);
   min-height: 100vh;
   line-height: 1.6;
