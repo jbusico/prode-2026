@@ -320,42 +320,66 @@ function renderProdeUI() {
   
   container.innerHTML = '';
   
-  MATCHES.forEach((match, index) => {
-    const pred = predictions[index] || { home: '', away: '' };
+  let matchIndex = 0;
+  
+  // Recorrer cada grupo
+  Object.keys(MATCHES).forEach(groupName => {
+    const matches = MATCHES[groupName];
     
-    const card = document.createElement('div');
-    card.className = 'match-card';
-    card.innerHTML = `
-      <div class="match-date">${match.date}</div>
-      <div class="match-teams">
-        <div class="match-team">${match.home}</div>
-        <div class="match-vs">vs</div>
-        <div class="match-team">${match.away}</div>
-      </div>
-      <div class="match-inputs">
-        <input 
-          type="number" 
-          class="match-input" 
-          min="0" 
-          max="20"
-          value="${pred.home}"
-          id="pred-home-${index}"
-          placeholder="0"
-        >
-        <div class="match-dash">–</div>
-        <input 
-          type="number" 
-          class="match-input" 
-          min="0" 
-          max="20"
-          value="${pred.away}"
-          id="pred-away-${index}"
-          placeholder="0"
-        >
-      </div>
+    // Crear header del grupo
+    const groupHeader = document.createElement('div');
+    groupHeader.style.cssText = `
+      margin-top: 32px;
+      margin-bottom: 16px;
+      padding: 0 16px;
+      border-left: 4px solid var(--rojo);
     `;
+    groupHeader.innerHTML = `
+      <h2 style="font-size: 20px; color: var(--azul); font-weight: 700; margin: 0;">
+        ${groupName.toUpperCase()}
+      </h2>
+    `;
+    container.appendChild(groupHeader);
     
-    container.appendChild(card);
+    // Crear cards de partidos del grupo
+    matches.forEach(match => {
+      const pred = predictions[matchIndex] || { home: '', away: '' };
+      
+      const card = document.createElement('div');
+      card.className = 'match-card';
+      card.innerHTML = `
+        <div class="match-date">${match.date}</div>
+        <div class="match-teams">
+          <div class="match-team">${match.home}</div>
+          <div class="match-vs">vs</div>
+          <div class="match-team">${match.away}</div>
+        </div>
+        <div class="match-inputs">
+          <input 
+            type="number" 
+            class="match-input" 
+            min="0" 
+            max="20"
+            value="${pred.home}"
+            id="pred-home-${matchIndex}"
+            placeholder="0"
+          >
+          <div class="match-dash">–</div>
+          <input 
+            type="number" 
+            class="match-input" 
+            min="0" 
+            max="20"
+            value="${pred.away}"
+            id="pred-away-${matchIndex}"
+            placeholder="0"
+          >
+        </div>
+      `;
+      
+      container.appendChild(card);
+      matchIndex++;
+    });
   });
 }
 
