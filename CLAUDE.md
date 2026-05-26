@@ -1,6 +1,14 @@
 # PRODE Copa Mundial 2026
 
-App de pronósticos para el Mundial 2026. Frontend vanilla JS + backend Express + MongoDB Atlas.
+## Contexto del proyecto
+
+Proyecto desarrollado por **alumnos de una escuela** para recaudar fondos. Los profesores (Gustavo y equipo) están puliendo el código para corregir errores, mejorar la seguridad mínima y dejarlo listo para compartir con toda la escuela.
+
+**Filosofía de trabajo:**
+- NO cambiar el funcionamiento visual general — respetar el trabajo de los alumnos
+- SÍ corregir bugs, errores de UX/UI pequeños y problemas de seguridad
+- SÍ asegurar que toda la información persista en MongoDB (nada en localStorage como fuente de verdad)
+- Cambios quirúrgicos, no refactors grandes
 
 ## Correr localmente
 
@@ -44,5 +52,5 @@ api/
 
 - `MATCHES` es un objeto `{grupoA:[...], grupoB:[...]}` — usar `Object.values(MATCHES).flat()` cuando se necesita lista plana
 - Los pronósticos se indexan 0-15 (orden de `Object.values(MATCHES).flat()`)
-- El log de auditoría vive en `localStorage` del browser, no en la DB
+- El log de auditoría todavía vive en `localStorage` del browser — pendiente migrar a DB
 - Dark mode: variables `--fondo`, `--card`, `--card-alt`, `--text` — no usar `background: white` en nuevos componentes
