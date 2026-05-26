@@ -314,10 +314,10 @@ function deleteCurrentUser() {
 function renderAdminResults() {
   const form = document.getElementById('results-form');
   const results = getFromStorage('insc_results', {});
-  
+
   form.innerHTML = '';
-  
-  MATCHES.forEach((match, i) => {
+
+  Object.values(MATCHES).flat().forEach((match, i) => {
     const res = results[i] || { home: '', away: '' };
     
     const card = document.createElement('div');
@@ -386,8 +386,8 @@ function saveResults() {
   try {
     const results = {};
     let errors = [];
-    
-    MATCHES.forEach((match, i) => {
+
+    Object.values(MATCHES).flat().forEach((match, i) => {
       const homeVal = document.getElementById(`res-home-${i}`).value.trim();
       const awayVal = document.getElementById(`res-away-${i}`).value.trim();
       

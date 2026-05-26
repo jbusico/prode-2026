@@ -634,17 +634,19 @@ function openViewPredictions(dni) {
   const preds = u.predictions || {};
   const results = getFromStorage('insc_results', {});
   
+  const allMatches = Object.values(MATCHES).flat();
+
   let hits = 0;
-  MATCHES.forEach((_, i) => {
+  allMatches.forEach((_, i) => {
     const p = preds[i];
     const r = results[i];
     if (p && r && String(p.home) === String(r.home) && String(p.away) === String(r.away)) {
       hits++;
     }
   });
-  
+
   let rows = '';
-  MATCHES.forEach((m, i) => {
+  allMatches.forEach((m, i) => {
     const p = preds[i];
     const r = results[i];
     const hasPred = p && (p.home !== '' || p.away !== '');
