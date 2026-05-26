@@ -25,7 +25,7 @@
   <div class="nav-links">
     <button class="nav-link" onclick="showPage('page-home')">Inicio</button>
     <button class="nav-link" onclick="showPage('page-prode')">PRODE</button>
-    <button class="nav-link" onclick="showPage('page-ranking')">Ranking</button>
+    <button class="nav-link" onclick="refreshAndShowRanking()">Ranking</button>
     <button class="nav-link" onclick="showPage('page-prizes')">Premios</button>
     <button class="nav-link" onclick="showPage('page-info')">Más Info</button>
     <button class="nav-link" id="nav-admin" onclick="showPage('page-admin')" style="display:none;">Admin</button>
@@ -190,8 +190,7 @@
     <div class="admin-tabs">
       <button class="admin-tab-btn active" onclick="switchAdminTab('users')">👥 Usuarios</button>
       <button class="admin-tab-btn" onclick="switchAdminTab('results')">📊 Resultados</button>
-      <button class="admin-tab-btn" onclick="switchAdminTab('scores')">🏆 Puntajes</button>
-      <button class="admin-tab-btn" onclick="switchAdminTab('logs')">📋 Auditoría</button>
+<button class="admin-tab-btn" onclick="switchAdminTab('logs')">📋 Auditoría</button>
     </div>
 
     <!-- TAB: USUARIOS -->
@@ -219,10 +218,7 @@
     <div id="admin-results-tab" class="admin-tab">
       <div class="sync-btn-wrap">
         <h3 style="margin:0;">Ingresar Resultados de Partidos</h3>
-        <div style="display:flex; gap:8px; flex-wrap:wrap;">
-          <button class="btn-secondary" onclick="syncMatchesFromESPN()">🔄 Sincronizar Partidos desde ESPN</button>
-          <button class="btn-secondary" onclick="fixGroupsFromESPN()">🗂️ Corregir Grupos</button>
-        </div>
+        <button class="btn-secondary" onclick="syncMatchesFromESPN()">🔄 Sincronizar Partidos desde ESPN</button>
       </div>
       <div class="results-form" id="results-form">
         <!-- Se genera con JavaScript -->
@@ -230,32 +226,11 @@
       <button class="btn-primary" onclick="saveResultsWithLoader()" style="margin-top:16px;">Guardar Resultados</button>
     </div>
 
-    <!-- TAB: PUNTAJES -->
-    <div id="admin-scores-tab" class="admin-tab">
-      <h3>Gestionar Puntajes</h3>
-      <table class="admin-table">
-        <thead>
-          <tr>
-            <th>Nombre</th>
-            <th>DNI</th>
-            <th>Aciertos</th>
-            <th>Puntos Auto</th>
-            <th>Puntos Manual</th>
-          </tr>
-        </thead>
-        <tbody id="admin-scores-tbody">
-          <!-- Se genera con JavaScript -->
-        </tbody>
-      </table>
-      <button class="btn-primary" onclick="saveAdminScores()" style="margin-top:20px;">Guardar Puntajes</button>
-    </div>
-
     <!-- TAB: AUDITORÍA -->
     <div id="admin-logs-tab" class="admin-tab">
       <h3>Registro de Cambios</h3>
       <div class="logs-controls">
-        <button class="btn-secondary" onclick="clearAuditLogs()">🗑️ Limpiar Logs</button>
-        <button class="btn-secondary" onclick="downloadAuditLogs()">📥 Descargar CSV</button>
+<button class="btn-secondary" onclick="downloadAuditLogs()">📥 Descargar CSV</button>
       </div>
       <div class="logs-container" id="logs-container">
         <!-- Se genera con JavaScript -->
@@ -353,8 +328,6 @@
         </div>
       </div>
     </div>
-
-    <button class="btn-secondary" onclick="showPage('page-home')" style="margin-top:12px;">← Volver al Inicio</button>
   </div>
 </div>
 

@@ -7,20 +7,18 @@ async function initApp() {
   console.log('🚀 Inicializando aplicación...');
 
   try {
-    users    = getFromStorage('insc_users', {});
     auditLog = getFromStorage('insc_audit_log', []);
 
-    if (Object.keys(users).length === 0) {
-      console.log('📝 Creando usuarios de demostración...');
-      await createDemoUsers();
-    }
-
-    // Cargar partidos desde la API (con fallback a caché local)
     await loadMatchesFromAPI();
 
-    const savedUser = getFromStorage('insc_current');
-    if (savedUser && users[savedUser]) {
-      currentUser = savedUser;
+    const token        = localStorage.getItem('prode_token');
+    const savedUserStr = localStorage.getItem('prode_user');
+
+    if (token && savedUserStr) {
+      const savedUser = JSON.parse(savedUserStr);
+      users[savedUser.dni] = savedUser;
+      currentUser = savedUser.dni;
+      if (savedUser.isAdmin) await loadAllUsers();
       updateUIAfterLogin();
       showPage('page-home');
       logAudit('LOGIN_RESTORED', { método: 'sesión guardada' });
@@ -32,6 +30,15 @@ async function initApp() {
   } catch (error) {
     console.error('❌ Error inicializando:', error);
     showToast('Error al inicializar la aplicación', 'error');
+  }
+}
+
+async function loadAllUsers() {
+  try {
+    const allUsers = await apiCall('GET', '/api/users');
+    allUsers.forEach(u => { users[u.dni] = u; });
+  } catch (e) {
+    console.error('Error cargando usuarios:', e);
   }
 }
 
@@ -47,23 +54,6 @@ async function loadMatchesFromAPI() {
     console.warn('⚠️ API no disponible, usando caché:', err.message);
     MATCHES = getFromStorage('insc_matches_cache', []);
   }
-}
-
-async function createDemoUsers() {
-  users['11222333'] = {
-    dni: '11222333',
-    nombre: 'Administrador',
-    email: 'admin@prode.local',
-    pass: '11222333',
-    passHash: null,
-    paid: false,
-    saved: false,
-    predictions: {},
-    rifas: 0,
-    isAdmin: true,
-    createdAt: new Date().toISOString()
-  };
-  saveToStorage('insc_users', users);
 }
 
 // ===== AUTENTICACIÓN =====
@@ -98,24 +88,40 @@ async function handleLogin(event) {
 
   try {
     await new Promise(r => setTimeout(r, 500));
-    const success = await attemptLogin(dniInput, passInput);
+
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dni: dniInput, password: passInput })
+    });
+
     hideLoading();
 
-    if (success) {
-      logAudit('LOGIN_SUCCESS', { dni: dniInput });
-      clearLoginErrors(dniInput);
-      document.getElementById('login-dni').value  = '';
-      document.getElementById('login-pass').value = '';
-      updateUIAfterLogin();
-      showPage('page-home');
-      showToast(`¡Bienvenido, ${users[dniInput].nombre}!`, 'success');
-    } else {
+    if (!res.ok) {
       logAudit('LOGIN_FAILED', { dni: dniInput, razón: 'credenciales inválidas' });
       recordLoginAttempt(dniInput);
       document.getElementById('pass-error').textContent = 'DNI o contraseña incorrectos';
       showToast('DNI o contraseña incorrectos', 'error');
       updateAttemptWarning(dniInput);
+      return;
     }
+
+    const data = await res.json();
+    localStorage.setItem('prode_token', data.token);
+    localStorage.setItem('prode_user', JSON.stringify(data.user));
+
+    users[data.user.dni] = data.user;
+    currentUser = data.user.dni;
+
+    if (data.user.isAdmin) await loadAllUsers();
+
+    logAudit('LOGIN_SUCCESS', { dni: dniInput });
+    clearLoginErrors(dniInput);
+    document.getElementById('login-dni').value  = '';
+    document.getElementById('login-pass').value = '';
+    updateUIAfterLogin();
+    showPage('page-home');
+    showToast(`¡Bienvenido, ${data.user.nombre}!`, 'success');
   } catch (error) {
     hideLoading();
     console.error('Error en login:', error);
@@ -123,24 +129,6 @@ async function handleLogin(event) {
   }
 }
 
-async function attemptLogin(dni, password) {
-  if (!users[dni]) return false;
-
-  const user = users[dni];
-  let isValid = false;
-
-  if (user.pass && user.pass === password) {
-    isValid = true;
-  } else if (user.passHash) {
-    isValid = await comparePassword(password, user.passHash);
-  }
-
-  if (!isValid) return false;
-
-  currentUser = dni;
-  saveToStorage('insc_current', dni);
-  return true;
-}
 
 function recordLoginAttempt(dni) {
   const now = Date.now();
@@ -184,7 +172,10 @@ function doLogout() {
     () => {
       logAudit('LOGOUT', { dni: currentUser });
       currentUser = null;
-      clearStorage('insc_current');
+      users = {};
+      latestResults = { results: {}, overrides: {} };
+      localStorage.removeItem('prode_token');
+      localStorage.removeItem('prode_user');
       showPage('page-login');
       showToast('Sesión cerrada', 'info');
       document.getElementById('login-dni').value  = '';
@@ -232,24 +223,35 @@ function renderProdeUI() {
     return;
   }
 
-  // Agrupar por fase
   const byPhase = {};
   MATCHES.forEach(m => {
     if (!byPhase[m.phase]) byPhase[m.phase] = [];
     byPhase[m.phase].push(m);
   });
 
-  PHASE_ORDER.forEach(phase => {
-    const phaseMatches = byPhase[phase];
-    if (!phaseMatches || phaseMatches.length === 0) return;
+  const availablePhases = PHASE_ORDER.filter(p => byPhase[p]?.length > 0);
+  if (availablePhases.length === 0) return;
 
+  // Tab bar
+  const tabBar = document.createElement('div');
+  tabBar.className = 'phase-tabs';
+  availablePhases.forEach((phase, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'phase-tab-btn' + (i === 0 ? ' active' : '');
+    btn.textContent = phase;
+    btn.dataset.phase = phase;
+    btn.onclick = () => switchProdePhase(phase);
+    tabBar.appendChild(btn);
+  });
+  container.appendChild(tabBar);
+
+  // Phase sections
+  availablePhases.forEach((phase, i) => {
+    const phaseMatches = byPhase[phase];
     const phaseSection = document.createElement('div');
     phaseSection.className = 'phase-section';
-
-    const phaseHeader = document.createElement('div');
-    phaseHeader.className = 'phase-header';
-    phaseHeader.innerHTML = `<h2 class="phase-title">${phase.toUpperCase()}</h2>`;
-    phaseSection.appendChild(phaseHeader);
+    phaseSection.dataset.phase = phase;
+    if (i !== 0) phaseSection.style.display = 'none';
 
     if (phase === 'Fase de Grupos') {
       const byGroup = {};
@@ -280,7 +282,6 @@ function renderProdeUI() {
         phaseSection.appendChild(groupSection);
       });
 
-      // Matches sin grupo asignado
       if (byGroup['?']?.length) {
         const noGroup = document.createElement('div');
         noGroup.className = 'group-section';
@@ -304,6 +305,15 @@ function renderProdeUI() {
   });
 }
 
+function switchProdePhase(phase) {
+  document.querySelectorAll('#matches-container .phase-tab-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.phase === phase);
+  });
+  document.querySelectorAll('#matches-container .phase-section').forEach(sec => {
+    sec.style.display = sec.dataset.phase === phase ? '' : 'none';
+  });
+}
+
 function createMatchCard(match, pred) {
   const id         = match._id;
   const hasResult  = match.homeScore !== null && match.awayScore !== null;
@@ -324,11 +334,11 @@ function createMatchCard(match, pred) {
     <div class="match-inputs">
       <input type="number" class="match-input" min="0" max="20"
         value="${pred.home}" id="pred-home-${id}" placeholder="0"
-        ${isFinished ? 'disabled title="Partido finalizado"' : ''}>
+        ${isFinished ? 'disabled title="Partido finalizado"' : 'oninput="markProdeUnsaved()"'}>
       <div class="match-dash">–</div>
       <input type="number" class="match-input" min="0" max="20"
         value="${pred.away}" id="pred-away-${id}" placeholder="0"
-        ${isFinished ? 'disabled title="Partido finalizado"' : ''}>
+        ${isFinished ? 'disabled title="Partido finalizado"' : 'oninput="markProdeUnsaved()"'}>
     </div>`;
   return card;
 }
@@ -338,8 +348,7 @@ function createMatchCard(match, pred) {
 async function saveProdeWithLoader() {
   showLoading('Guardando pronósticos...');
   try {
-    await new Promise(r => setTimeout(r, 500));
-    const success = saveProde();
+    const success = await saveProde();
     hideLoading();
     if (success) {
       updateStatusIndicator(true);
@@ -351,7 +360,7 @@ async function saveProdeWithLoader() {
   }
 }
 
-function saveProde() {
+async function saveProde() {
   try {
     const predictions = {};
     const errors      = [];
@@ -396,9 +405,11 @@ function saveProde() {
       return false;
     }
 
-    users[currentUser].predictions = predictions;
-    users[currentUser].saved       = true;
-    saveToStorage('insc_users', users);
+    await apiCall('PUT', `/api/users/${currentUser}/predictions`, { predictions });
+    if (users[currentUser]) {
+      users[currentUser].predictions = predictions;
+      users[currentUser].saved = true;
+    }
 
     logAudit('SAVE_PREDICTIONS', { cantidad: Object.keys(predictions).length });
     showToast('✅ Pronósticos guardados correctamente', 'success');
@@ -410,79 +421,110 @@ function saveProde() {
   }
 }
 
+function markProdeUnsaved() {
+  const indicator  = document.getElementById('status-indicator');
+  const statusText = document.getElementById('status-text');
+  if (!indicator) return;
+  indicator.style.color  = 'var(--warning)';
+  statusText.textContent = 'Cambios sin guardar';
+}
+
 function updateStatusIndicator(isSaving) {
   const indicator  = document.getElementById('status-indicator');
   const statusText = document.getElementById('status-text');
+  if (!indicator) return;
   if (isSaving) {
-    indicator.style.display = 'flex';
-    statusText.textContent  = 'Guardando...';
-    indicator.style.color   = 'var(--warning)';
+    indicator.style.color  = 'var(--warning)';
+    statusText.textContent = 'Guardando...';
   } else {
-    indicator.style.color   = 'var(--success)';
-    statusText.textContent  = 'Cambios guardados';
-    setTimeout(() => { if (indicator) indicator.style.display = 'flex'; }, 3000);
+    indicator.style.color  = 'var(--success)';
+    statusText.textContent = 'Cambios guardados';
   }
 }
 
 // ===== PRIZES PAGE =====
 
 async function renderPrizesUI() {
-  renderRanking();
+  await renderRanking();
   await renderPrizes();
 }
 
-function renderRanking() {
-  const results   = getFromStorage('insc_results', {});
-  const overrides = getFromStorage('insc_points_override', {});
-  const rankings  = [];
+async function refreshAndShowRanking() {
+  showPage('page-ranking');
+  await renderRanking();
+}
 
-  Object.values(users).forEach(u => {
-    if (!u.paid || u.isAdmin) return;
-    const preds   = u.predictions || {};
-    let acertados = 0;
-    let puntosAuto = 0;
-
-    Object.keys(results).forEach(matchId => {
-      const r   = results[matchId];
-      const p   = preds[matchId];
-      const pts = calcMatchPoints(p, r);
-      if (pts > 0) acertados++;
-      puntosAuto += pts;
-    });
-    const puntosManual = overrides[u.dni];
-    const puntos       = puntosManual !== undefined ? puntosManual : puntosAuto;
-    rankings.push({ dni: u.dni, nombre: u.nombre, aciertos: acertados, puntos, puntosAuto });
-  });
-
-  rankings.sort((a, b) => b.puntos - a.puntos);
-
+async function renderRanking() {
   const topThree = document.getElementById('top-three');
-  topThree.innerHTML = '';
-  const medals  = ['🥇','🥈','🥉'];
-  const classes = ['rank-1st','rank-2nd','rank-3rd'];
-  for (let i = 0; i < 3; i++) {
-    if (!rankings[i]) break;
-    const card = document.createElement('div');
-    card.className = `rank-card ${classes[i]}`;
-    card.innerHTML = `
-      <div class="rank-medal">${medals[i]}</div>
-      <div class="rank-name">${escapeHTML(rankings[i].nombre)}</div>
-      <div class="rank-points">${rankings[i].puntos} pts</div>`;
-    topThree.appendChild(card);
-  }
+  const tbody    = document.getElementById('scores-tbody');
+  topThree.innerHTML = '<p style="color:var(--text-light); font-size:14px;">Cargando...</p>';
+  tbody.innerHTML    = '';
 
-  const tbody = document.getElementById('scores-tbody');
-  tbody.innerHTML = '';
-  rankings.forEach((rank, idx) => {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td>${idx + 1}</td>
-      <td>${escapeHTML(rank.nombre)}</td>
-      <td>${rank.aciertos}</td>
-      <td>${rank.puntos}</td>
-      <td><button class="btn-secondary" onclick="openViewPredictions('${rank.dni}')">Ver pronósticos</button></td>`;
-    tbody.appendChild(tr);
-  });
+  try {
+    const [rankingUsers, resultsData] = await Promise.all([
+      apiCall('GET', '/api/predictions/ranking'),
+      apiCall('GET', '/api/results')
+    ]);
+
+    latestResults = { results: resultsData.results || {}, overrides: resultsData.overrides || {} };
+    rankingUsers.forEach(u => { users[u.dni] = u; });
+
+    const { results, overrides } = latestResults;
+    const rankings = [];
+
+    rankingUsers.forEach(u => {
+      const preds    = u.predictions || {};
+      let acertados  = 0;
+      let puntosAuto = 0;
+
+      Object.keys(results).forEach(matchId => {
+        const r   = results[matchId];
+        const p   = preds[matchId];
+        const pts = calcMatchPoints(p, r);
+        if (pts > 0) acertados++;
+        puntosAuto += pts;
+      });
+
+      const puntosManual = overrides[u.dni];
+      const puntos       = puntosManual !== undefined ? puntosManual : puntosAuto;
+      rankings.push({ dni: u.dni, nombre: u.nombre, aciertos: acertados, puntos, puntosAuto });
+    });
+
+    rankings.sort((a, b) => b.puntos - a.puntos);
+
+    topThree.innerHTML = '';
+    const medals  = ['🥇','🥈','🥉'];
+    const classes = ['rank-1st','rank-2nd','rank-3rd'];
+    for (let i = 0; i < 3; i++) {
+      if (!rankings[i]) break;
+      const card = document.createElement('div');
+      card.className = `rank-card ${classes[i]}`;
+      card.innerHTML = `
+        <div class="rank-medal">${medals[i]}</div>
+        <div class="rank-name">${escapeHTML(rankings[i].nombre)}</div>
+        <div class="rank-points">${rankings[i].puntos} pts</div>`;
+      topThree.appendChild(card);
+    }
+
+    tbody.innerHTML = '';
+    if (rankings.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--text-light);">No hay participantes con pago confirmado aún.</td></tr>';
+    } else {
+      rankings.forEach((rank, idx) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${idx + 1}</td>
+          <td>${escapeHTML(rank.nombre)}</td>
+          <td>${rank.aciertos}</td>
+          <td>${rank.puntos}</td>
+          <td><button class="btn-secondary" onclick="openViewPredictions('${rank.dni}')">Ver pronósticos</button></td>`;
+        tbody.appendChild(tr);
+      });
+    }
+  } catch (e) {
+    console.error('Error cargando ranking:', e);
+    topThree.innerHTML = '<p style="color:var(--text-light); font-size:14px;">Error al cargar el ranking.</p>';
+  }
 }
 
 async function renderPrizes() {
@@ -525,7 +567,7 @@ function openViewPredictions(dni) {
   if (!u) return;
 
   const preds   = u.predictions || {};
-  const results = getFromStorage('insc_results', {});
+  const results = latestResults.results;
   let hits     = 0;
   let totalPts = 0;
 

@@ -241,22 +241,9 @@ function showConfirm(message, callback, isDangerous = false, title = 'Confirmar 
  * Registra una acción en el log de auditoría
  */
 function logAudit(action, details = {}) {
-  const registro = {
-    timestamp: new Date().toISOString(),
-    usuario: currentUser || 'anonymous',
-    accion: action,
-    detalles: details
-  };
-  
-  auditLog.push(registro);
-  
-  // Mantener solo últimos 1000 registros
-  if (auditLog.length > 1000) {
-    auditLog = auditLog.slice(-1000);
-  }
-  
-  saveToStorage('insc_audit_log', auditLog);
+  const registro = { usuario: currentUser || 'anonymous', accion: action, detalles: details };
   console.log('📋 Auditoría:', registro);
+  apiCall('POST', '/api/logs', registro).catch(() => {});
 }
 
 // ===== MODAL HELPERS =====
@@ -308,6 +295,12 @@ function showPage(pageId) {
   if (navbar) {
     navbar.style.display = pageId === 'page-login' ? 'none' : 'flex';
   }
+
+  // Marcar botón activo en el navbar
+  document.querySelectorAll('.nav-link').forEach(btn => {
+    const target = (btn.getAttribute('onclick') || '').match(/'([^']+)'/);
+    btn.classList.toggle('active', target && target[1] === pageId);
+  });
 
   // Scroll al top
   window.scrollTo(0, 0);

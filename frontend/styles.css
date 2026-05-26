@@ -499,6 +499,7 @@ button { font-family: 'Barlow', sans-serif; }
   border: 1px solid var(--gris-medio);
   transition: all 0.3s;
   animation: fadeIn 0.4s ease-out;
+  margin-bottom: 12px;
 }
 
 .match-card:hover {
@@ -660,10 +661,13 @@ button { font-family: 'Barlow', sans-serif; }
 .admin-table tbody tr:nth-child(odd) { background: var(--card-alt); }
 
 .results-form {
+  margin-bottom: 20px;
+}
+
+.results-phase-section {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 16px;
-  margin-bottom: 20px;
 }
 
 .result-card {
@@ -833,9 +837,10 @@ button { font-family: 'Barlow', sans-serif; }
   .prizes-grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
   .admin-tabs { gap: 4px; }
   .admin-tab-btn { padding: 10px 14px; font-size: 12px; }
+  .phase-tab-btn { padding: 8px 10px; font-size: 11px; }
   .admin-table { font-size: 12px; }
   .admin-table th, .admin-table td { padding: 8px 12px; }
-  .results-form { grid-template-columns: 1fr; }
+  .results-phase-section { grid-template-columns: 1fr; }
   .ranking-table { font-size: 12px; }
   .ranking-table th, .ranking-table td { padding: 8px 10px; }
   .modal-content { width: 95%; max-width: none; border-radius: 12px; }
@@ -1101,11 +1106,41 @@ button { font-family: 'Barlow', sans-serif; }
   }
 }
 
+/* ===== TABS DE FASE ===== */
+.phase-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 20px;
+  border-bottom: 2px solid var(--gris-medio);
+}
+
+.phase-tab-btn {
+  background: none;
+  border: none;
+  padding: 10px 16px;
+  cursor: pointer;
+  color: var(--text-light);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px;
+  transition: color 0.2s;
+  white-space: nowrap;
+}
+.phase-tab-btn:hover { color: var(--text); }
+.phase-tab-btn.active { color: var(--rojo); border-bottom-color: var(--rojo); }
+
 /* ===== FASES Y GRUPOS DE PARTIDOS ===== */
+
+/* Tab bar ocupa todo el ancho del grid */
+.phase-tabs { grid-column: 1 / -1; }
 
 /* Sección de fase (ej: FASE DE GRUPOS, RONDA DE 32) */
 .phase-section {
-  margin-top: 40px;
+  grid-column: 1 / -1;
+  margin-top: 8px;
   margin-bottom: 24px;
 }
 
@@ -1214,6 +1249,7 @@ button { font-family: 'Barlow', sans-serif; }
   text-transform: uppercase;
   letter-spacing: 0.5px;
   border-left: 3px solid var(--azul);
+  grid-column: 1 / -1;
 }
 
 /* Botón sincronizar en admin */

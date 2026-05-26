@@ -11,7 +11,11 @@
       "Bash(git add *)",
       "Bash(git commit -m ' *)",
       "Bash(mkdir \"C:\\\\Users\\\\Gustavo\\\\.claude\\\\projects\\\\d--prode-2026\\\\memory\")",
-      "Bash(Remove-Item -Recurse -Force \"C:\\\\Users\\\\Gustavo\\\\.claude\\\\projects\\\\d--prode-2026\\\\memory\")"
+      "Bash(Remove-Item -Recurse -Force \"C:\\\\Users\\\\Gustavo\\\\.claude\\\\projects\\\\d--prode-2026\\\\memory\")",
+      "Bash(del \"d:\\\\prode-2026\\\\api\\\\models\\\\TeamGroup.js\")",
+      "Bash(Remove-Item \"d:\\\\prode-2026\\\\api\\\\models\\\\TeamGroup.js\")",
+      "Bash(pnpm add *)",
+      "Bash(node -e \"require\\('./api/models/AuditLog'\\); require\\('./api/routes/logs'\\); console.log\\('OK'\\)\")"
     ],
     "additionalDirectories": [
       "C:\\Users\\Gustavo\\.claude\\projects\\d--prode-2026"

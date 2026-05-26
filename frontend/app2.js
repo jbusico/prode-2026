@@ -22,8 +22,7 @@ function switchAdminTab(tabName) {
 
   if (tabName === 'users')   renderAdminUsers();
   if (tabName === 'results') renderAdminResults();
-  if (tabName === 'scores')  renderAdminScores();
-  if (tabName === 'logs')    renderAdminLogs();
+if (tabName === 'logs')    renderAdminLogs();
 }
 
 // ===== ADMIN: USUARIOS =====
@@ -87,23 +86,19 @@ async function saveAddUser() {
 
   try {
     showLoading('Agregando usuario...');
-    const passHash = await hashPassword(pass);
-
-    users[dni] = {
+    await apiCall('POST', '/api/auth/register', {
       dni, nombre: sanitize(nombre), email: sanitize(email),
-      passHash, paid, saved: false, predictions: {}, rifas: 0,
-      isAdmin: false, createdAt: new Date().toISOString()
-    };
-
-    saveToStorage('insc_users', users);
-    logAudit('CREATE_USER', { dni, nombre: users[dni].nombre });
+      password: pass, paid
+    });
+    await loadAllUsers();
+    logAudit('CREATE_USER', { dni, nombre: sanitize(nombre) });
     hideLoading();
     closeModal('modal-add-user');
     renderAdminUsers();
     showToast('✅ Usuario agregado correctamente', 'success');
   } catch (error) {
     hideLoading();
-    showToast('Error al agregar usuario', 'error');
+    showToast(error.message || 'Error al agregar usuario', 'error');
   }
 }
 
@@ -111,13 +106,12 @@ function openEditUser(dni) {
   const u = users[dni];
   if (!u) return;
 
-  const overrides = getFromStorage('insc_points_override', {});
   document.getElementById('eu-dni').value    = u.dni;
   document.getElementById('eu-nombre').value = u.nombre;
   document.getElementById('eu-email').value  = u.email;
   document.getElementById('eu-pass').value   = '';
   document.getElementById('eu-paid').checked = u.paid === true;
-  document.getElementById('eu-points').value = overrides[dni] !== undefined ? overrides[dni] : '';
+  document.getElementById('eu-points').value = latestResults.overrides[dni] !== undefined ? latestResults.overrides[dni] : '';
   ['eu-nombre-error','eu-email-error','eu-pass-error'].forEach(id => {
     document.getElementById(id).textContent = '';
   });
@@ -156,27 +150,27 @@ async function saveEditUser() {
 
   try {
     showLoading('Guardando cambios...');
-    const user  = users[dni];
-    user.nombre = sanitize(nombre);
-    user.email  = sanitize(email);
-    user.paid   = paid;
-    if (pass) user.passHash = await hashPassword(pass);
 
-    const overrides = getFromStorage('insc_points_override', {});
+    const updateBody = { nombre: sanitize(nombre), email: sanitize(email), paid };
+    if (pass) updateBody.password = pass;
+    const updatedUser = await apiCall('PUT', `/api/users/${dni}`, updateBody);
+    users[dni] = updatedUser;
+
+    const currentResults = await apiCall('GET', '/api/results');
+    const overrides = currentResults.overrides || {};
     if (pointsVal !== '') overrides[dni] = Number(pointsVal);
     else delete overrides[dni];
-    saveToStorage('insc_points_override', overrides);
+    await apiCall('PUT', '/api/results', { results: currentResults.results || {}, overrides });
+    latestResults.overrides = overrides;
 
-    saveToStorage('insc_users', users);
-    logAudit('UPDATE_USER', { dni, nombre: user.nombre });
+    logAudit('UPDATE_USER', { dni, nombre: sanitize(nombre) });
     hideLoading();
     closeModal('modal-edit-user');
     renderAdminUsers();
-    renderAdminScores();
     showToast('✅ Usuario actualizado', 'success');
   } catch (error) {
     hideLoading();
-    showToast('Error al actualizar usuario', 'error');
+    showToast(error.message || 'Error al actualizar usuario', 'error');
   }
 }
 
@@ -186,14 +180,20 @@ function deleteCurrentUser() {
   const u = users[dni];
   showConfirm(
     `¿Eliminar a ${u.nombre}? Esta acción no se puede deshacer.`,
-    () => {
-      delete users[dni];
-      saveToStorage('insc_users', users);
-      logAudit('DELETE_USER', { dni, nombre: u.nombre });
-      closeModal('modal-edit-user');
-      renderAdminUsers();
-      renderAdminScores();
-      showToast('✅ Usuario eliminado', 'success');
+    async () => {
+      try {
+        showLoading('Eliminando usuario...');
+        await apiCall('DELETE', `/api/users/${dni}`);
+        delete users[dni];
+        logAudit('DELETE_USER', { dni, nombre: u.nombre });
+        hideLoading();
+        closeModal('modal-edit-user');
+        renderAdminUsers();
+        showToast('✅ Usuario eliminado', 'success');
+      } catch (error) {
+        hideLoading();
+        showToast(error.message || 'Error al eliminar usuario', 'error');
+      }
     },
     true, 'Eliminar Usuario'
   );
@@ -201,9 +201,18 @@ function deleteCurrentUser() {
 
 // ===== ADMIN: RESULTADOS =====
 
-function renderAdminResults() {
-  const form    = document.getElementById('results-form');
-  const results = getFromStorage('insc_results', {});
+async function renderAdminResults() {
+  const form = document.getElementById('results-form');
+  form.innerHTML = '<div class="empty-matches" style="margin:20px 0;"><p>Cargando resultados...</p></div>';
+
+  let results = {};
+  try {
+    const data = await apiCall('GET', '/api/results');
+    results = data.results || {};
+  } catch (e) {
+    form.innerHTML = '<div class="empty-matches" style="margin:20px 0;"><p>Error al cargar resultados.</p></div>';
+    return;
+  }
 
   form.innerHTML = '';
 
@@ -221,14 +230,29 @@ function renderAdminResults() {
     byPhase[m.phase].push(m);
   });
 
-  PHASE_ORDER.forEach(phase => {
-    const phaseMatches = byPhase[phase];
-    if (!phaseMatches || phaseMatches.length === 0) return;
+  const availablePhases = PHASE_ORDER.filter(p => byPhase[p]?.length > 0);
+  if (availablePhases.length === 0) return;
 
-    const phaseHeader = document.createElement('div');
-    phaseHeader.className = 'phase-header-admin';
-    phaseHeader.innerHTML = `<strong>${phase.toUpperCase()}</strong>`;
-    form.appendChild(phaseHeader);
+  // Tab bar
+  const tabBar = document.createElement('div');
+  tabBar.className = 'phase-tabs';
+  availablePhases.forEach((phase, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'phase-tab-btn' + (i === 0 ? ' active' : '');
+    btn.textContent = phase;
+    btn.dataset.phase = phase;
+    btn.onclick = () => switchAdminResultsPhase(phase);
+    tabBar.appendChild(btn);
+  });
+  form.appendChild(tabBar);
+
+  // Phase sections
+  availablePhases.forEach((phase, i) => {
+    const phaseMatches = byPhase[phase];
+    const section = document.createElement('div');
+    section.className = 'results-phase-section';
+    section.dataset.phase = phase;
+    if (i !== 0) section.style.display = 'none';
 
     if (phase === 'Fase de Grupos') {
       const byGroup = {};
@@ -245,17 +269,28 @@ function renderAdminResults() {
         const groupLabel = document.createElement('div');
         groupLabel.className = 'group-label-admin';
         groupLabel.textContent = gl !== '?' ? `Grupo ${gl}` : 'Sin grupo asignado';
-        form.appendChild(groupLabel);
+        section.appendChild(groupLabel);
 
         gMatches
           .sort((a, b) => new Date(a.date) - new Date(b.date))
-          .forEach(m => form.appendChild(buildResultCard(m, results[m._id])));
+          .forEach(m => section.appendChild(buildResultCard(m, results[m._id])));
       });
     } else {
       phaseMatches
         .sort((a, b) => new Date(a.date) - new Date(b.date))
-        .forEach(m => form.appendChild(buildResultCard(m, results[m._id])));
+        .forEach(m => section.appendChild(buildResultCard(m, results[m._id])));
     }
+
+    form.appendChild(section);
+  });
+}
+
+function switchAdminResultsPhase(phase) {
+  document.querySelectorAll('#results-form .phase-tab-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.phase === phase);
+  });
+  document.querySelectorAll('#results-form .results-phase-section').forEach(sec => {
+    sec.style.display = sec.dataset.phase === phase ? '' : 'none';
   });
 }
 
@@ -282,17 +317,16 @@ function buildResultCard(match, res) {
 async function saveResultsWithLoader() {
   showLoading('Guardando resultados...');
   try {
-    await new Promise(r => setTimeout(r, 500));
-    const success = saveResults();
+    const success = await saveResults();
     hideLoading();
-    if (success) { renderRanking(); renderAdminScores(); }
+    if (success) { await renderRanking(); }
   } catch (error) {
     hideLoading();
     showToast('Error al guardar resultados', 'error');
   }
 }
 
-function saveResults() {
+async function saveResults() {
   try {
     const results = {};
     const errors  = [];
@@ -337,7 +371,8 @@ function saveResults() {
       return false;
     }
 
-    saveToStorage('insc_results', results);
+    await apiCall('PUT', '/api/results', { results, overrides: latestResults.overrides });
+    latestResults.results = results;
     logAudit('SAVE_RESULTS', {
       cantidad: Object.keys(results).filter(k => results[k].home !== '').length
     });
@@ -378,131 +413,39 @@ async function syncMatchesFromESPN() {
   );
 }
 
-// ===== ADMIN: CORREGIR GRUPOS =====
-
-async function fixGroupsFromESPN() {
-  showConfirm(
-    '¿Asignar grupos a los partidos de Fase de Grupos usando los standings de ESPN? Solo afecta partidos sin grupo asignado.',
-    async () => {
-      showLoading('Asignando grupos desde ESPN...');
-      try {
-        const res  = await fetch('/api/matches/fix-groups', { method: 'POST' });
-        const data = await res.json();
-
-        if (!res.ok) throw new Error(data.error || 'Error en servidor');
-
-        await loadMatchesFromAPI();
-        hideLoading();
-        renderAdminResults();
-        renderProdeUI();
-        showToast(`✅ ${data.fixed} partidos actualizados (${data.teams} equipos en mapa)`, 'success');
-        logAudit('FIX_GROUPS', { fixed: data.fixed, total: data.total });
-      } catch (err) {
-        hideLoading();
-        showToast(`Error al asignar grupos: ${err.message}`, 'error');
-      }
-    },
-    false, 'Asignar Grupos'
-  );
-}
-
-// ===== ADMIN: PUNTAJES =====
-
-function renderAdminScores() {
-  const tbody     = document.getElementById('admin-scores-tbody');
-  const results   = getFromStorage('insc_results', {});
-  const overrides = getFromStorage('insc_points_override', {});
-
-  tbody.innerHTML = '';
-
-  const participants = [];
-
-  Object.values(users).forEach(u => {
-    if (!u.paid || u.isAdmin) return;
-    const preds   = u.predictions || {};
-    let acertados  = 0;
-    let puntosAuto = 0;
-
-    Object.keys(results).forEach(matchId => {
-      const r   = results[matchId];
-      const p   = preds[matchId];
-      const pts = calcMatchPoints(p, r);
-      if (pts > 0) acertados++;
-      puntosAuto += pts;
-    });
-
-    participants.push({
-      dni: u.dni, nombre: u.nombre,
-      aciertos: acertados, puntosAuto,
-      puntosOverride: overrides[u.dni]
-    });
-  });
-
-  participants.sort((a, b) => a.nombre.localeCompare(b.nombre));
-
-  participants.forEach(p => {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td>${escapeHTML(p.nombre)}</td>
-      <td>${p.dni}</td>
-      <td>${p.aciertos}</td>
-      <td>${p.puntosAuto}</td>
-      <td>
-        <input class="override-input" type="number"
-          value="${p.puntosOverride !== undefined ? p.puntosOverride : ''}"
-          placeholder="auto" id="ov-${p.dni}"
-          style="width:100%; padding:6px; border:1px solid var(--gris-medio); border-radius:4px;">
-      </td>`;
-    tbody.appendChild(tr);
-  });
-}
-
-function saveAdminScores() {
-  try {
-    const overrides = getFromStorage('insc_points_override', {});
-    let cambios = 0;
-
-    Object.values(users).forEach(u => {
-      if (!u.paid || u.isAdmin) return;
-      const input = document.getElementById(`ov-${u.dni}`);
-      if (!input) return;
-      const value = input.value.trim();
-      if (value !== '') {
-        const num = Number(value);
-        if (!isNaN(num) && overrides[u.dni] !== num) { cambios++; overrides[u.dni] = num; }
-      } else if (overrides[u.dni] !== undefined) { cambios++; delete overrides[u.dni]; }
-    });
-
-    saveToStorage('insc_points_override', overrides);
-    logAudit('UPDATE_SCORES', { cambios });
-    renderRanking();
-    showToast(`✅ Puntajes guardados (${cambios} cambios)`, 'success');
-  } catch (error) {
-    showToast('Error al guardar puntajes', 'error');
-  }
-}
-
 // ===== ADMIN: AUDITORÍA =====
 
-function renderAdminLogs() {
+async function renderAdminLogs() {
   const container = document.getElementById('logs-container');
+  container.innerHTML = '<p style="text-align:center; color:var(--text-light); padding:20px;">Cargando...</p>';
+
+  // Logs del servidor (MongoDB)
+  let todos = [];
+  try {
+    todos = await apiCall('GET', '/api/logs');
+  } catch (e) {
+    container.innerHTML = '<p style="text-align:center; color:var(--text-light); padding:20px;">Error al cargar logs</p>';
+    return;
+  }
+
   container.innerHTML = '';
 
-  if (auditLog.length === 0) {
+  if (todos.length === 0) {
     container.innerHTML = '<p style="text-align:center; color:var(--text-light); padding:20px;">No hay registros aún</p>';
     return;
   }
 
-  const logs = [...auditLog].reverse().slice(0, 100);
-
-  logs.forEach(log => {
+  todos.forEach(log => {
     const entry = document.createElement('div');
     entry.className = 'log-entry';
     const details = Object.entries(log.detalles)
       .map(([k, v]) => `${k}: ${JSON.stringify(v)}`)
       .join(', ');
+    const origenBadge = log._origen === 'servidor'
+      ? '<span style="font-size:10px; background:var(--card-alt); padding:1px 6px; border-radius:4px; margin-left:6px;">servidor</span>'
+      : '';
     entry.innerHTML = `
-      <div class="log-timestamp">${formatDate(log.timestamp)}</div>
+      <div class="log-timestamp">${formatDate(log.timestamp)}${origenBadge}</div>
       <div>
         <span class="log-usuario">${escapeHTML(log.usuario)}</span> realizó
         <span class="log-action">${log.accion}</span>
@@ -512,19 +455,6 @@ function renderAdminLogs() {
   });
 }
 
-function clearAuditLogs() {
-  showConfirm(
-    '¿Borrar todos los registros de auditoría? Esta acción no se puede deshacer.',
-    () => {
-      auditLog = [];
-      saveToStorage('insc_audit_log', auditLog);
-      logAudit('CLEAR_AUDIT_LOGS', {});
-      renderAdminLogs();
-      showToast('✅ Logs borrados', 'success');
-    },
-    true, 'Borrar Logs'
-  );
-}
 
 function downloadAuditLogs() {
   const lines = ['timestamp,usuario,accion,detalles'];
