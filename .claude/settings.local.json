@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm install *)",
+      "Bash(node -e \"require\\('./api/server.js'\\)\")",
+      "Bash(node api/server.js)",
+      "Bash(curl -s http://localhost:3001/api/health)",
+      "Bash(taskkill /F /IM node.exe)",
+      "PowerShell(Get-Process node -ErrorAction SilentlyContinue)",
+      "PowerShell(Stop-Process -Force)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(mkdir \"C:\\\\Users\\\\Gustavo\\\\.claude\\\\projects\\\\d--prode-2026\\\\memory\")",
+      "Bash(Remove-Item -Recurse -Force \"C:\\\\Users\\\\Gustavo\\\\.claude\\\\projects\\\\d--prode-2026\\\\memory\")"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\Gustavo\\.claude\\projects\\d--prode-2026"
+    ]
+  }
+}
