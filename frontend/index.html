@@ -25,6 +25,7 @@
   <div class="nav-links">
     <button class="nav-link" onclick="showPage('page-home')">Inicio</button>
     <button class="nav-link" onclick="showPage('page-prode')">PRODE</button>
+    <button class="nav-link" onclick="showPage('page-ranking')">Ranking</button>
     <button class="nav-link" onclick="showPage('page-prizes')">Premios</button>
     <button class="nav-link" id="nav-admin" onclick="showPage('page-admin')" style="display:none;">Admin</button>
   </div>
@@ -132,18 +133,16 @@
   </div>
 </div>
 
-<!-- ===== PRIZES PAGE ===== -->
-<div id="page-prizes" class="page">
+<!-- ===== RANKING PAGE ===== -->
+<div id="page-ranking" class="page">
   <div class="page-content">
-    <h1>Premios y Ranking</h1>
+    <h1>Tabla de Posiciones</h1>
 
-    <!-- TABLA DE RANKING -->
     <div class="ranking-section">
-      <h2>Tabla de Posiciones</h2>
       <div id="top-three" class="top-three">
         <!-- Se genera con JavaScript -->
       </div>
-      
+
       <div class="ranking-table">
         <table>
           <thead>
@@ -162,7 +161,15 @@
       </div>
     </div>
 
-    <!-- PREMIOS -->
+    <button class="btn-secondary" onclick="showPage('page-home')" style="margin-top:20px;">Volver</button>
+  </div>
+</div>
+
+<!-- ===== PRIZES PAGE ===== -->
+<div id="page-prizes" class="page">
+  <div class="page-content">
+    <h1>Premios</h1>
+
     <div class="prizes-section">
       <h2>Premios PRODE</h2>
       <div class="prizes-grid" id="prizes-grid">

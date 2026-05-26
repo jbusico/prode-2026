@@ -392,17 +392,20 @@ function renderAdminScores() {
   Object.values(users).forEach(u => {
     if (!u.paid || u.isAdmin) return;
     const preds   = u.predictions || {};
-    let acertados = 0;
+    let acertados  = 0;
+    let puntosAuto = 0;
 
     Object.keys(results).forEach(matchId => {
-      const r = results[matchId];
-      const p = preds[matchId];
-      if (p && r && String(p.home) === String(r.home) && String(p.away) === String(r.away)) acertados++;
+      const r   = results[matchId];
+      const p   = preds[matchId];
+      const pts = calcMatchPoints(p, r);
+      if (pts > 0) acertados++;
+      puntosAuto += pts;
     });
 
     participants.push({
       dni: u.dni, nombre: u.nombre,
-      aciertos: acertados, puntosAuto: acertados * 5,
+      aciertos: acertados, puntosAuto,
       puntosOverride: overrides[u.dni]
     });
   });

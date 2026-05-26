@@ -440,14 +440,15 @@ function renderRanking() {
     if (!u.paid || u.isAdmin) return;
     const preds   = u.predictions || {};
     let acertados = 0;
+    let puntosAuto = 0;
 
     Object.keys(results).forEach(matchId => {
-      const r = results[matchId];
-      const p = preds[matchId];
-      if (p && r && String(p.home) === String(r.home) && String(p.away) === String(r.away)) acertados++;
+      const r   = results[matchId];
+      const p   = preds[matchId];
+      const pts = calcMatchPoints(p, r);
+      if (pts > 0) acertados++;
+      puntosAuto += pts;
     });
-
-    const puntosAuto   = acertados * 5;
     const puntosManual = overrides[u.dni];
     const puntos       = puntosManual !== undefined ? puntosManual : puntosAuto;
     rankings.push({ dni: u.dni, nombre: u.nombre, aciertos: acertados, puntos, puntosAuto });
@@ -507,12 +508,15 @@ function openViewPredictions(dni) {
 
   const preds   = u.predictions || {};
   const results = getFromStorage('insc_results', {});
-  let hits      = 0;
+  let hits     = 0;
+  let totalPts = 0;
 
   MATCHES.forEach(m => {
-    const p = preds[m._id];
-    const r = results[m._id];
-    if (p && r && r.home !== '' && String(p.home) === String(r.home) && String(p.away) === String(r.away)) hits++;
+    const p   = preds[m._id];
+    const r   = results[m._id];
+    const pts = calcMatchPoints(p, r);
+    if (pts > 0) hits++;
+    totalPts += pts;
   });
 
   let rows = '';
@@ -524,7 +528,8 @@ function openViewPredictions(dni) {
     const resStr  = r && r.home !== '' ? `${r.home} – ${r.away}` : '—';
     let status    = '⏳';
     if (r && r.home !== '' && hasPred) {
-      status = String(p.home) === String(r.home) && String(p.away) === String(r.away) ? '✅' : '❌';
+      const pts = calcMatchPoints(p, r);
+      status = pts === 10 ? '✅' : pts >= 5 ? '🟡' : '❌';
     }
     rows += `
       <tr>
@@ -550,7 +555,7 @@ function openViewPredictions(dni) {
       <tbody>${rows}</tbody>
     </table>
     <p style="margin-top:12px; color:var(--text-light); font-size:12px;">
-      ${u.saved ? '✅ Guardado' : '❌ No guardado'} · ${hits} aciertos · ${hits * 5} pts automáticos
+      ${u.saved ? '✅ Guardado' : '❌ No guardado'} · ${hits} con ganador acertado · ${totalPts} pts automáticos
     </p>`;
 
   openModal('modal-view-predictions');
