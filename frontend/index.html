@@ -27,6 +27,7 @@
     <button class="nav-link" onclick="showPage('page-prode')">PRODE</button>
     <button class="nav-link" onclick="showPage('page-ranking')">Ranking</button>
     <button class="nav-link" onclick="showPage('page-prizes')">Premios</button>
+    <button class="nav-link" onclick="showPage('page-info')">Más Info</button>
     <button class="nav-link" id="nav-admin" onclick="showPage('page-admin')" style="display:none;">Admin</button>
   </div>
   <div class="nav-right">
@@ -222,7 +223,10 @@
     <div id="admin-results-tab" class="admin-tab">
       <div class="sync-btn-wrap">
         <h3 style="margin:0;">Ingresar Resultados de Partidos</h3>
-        <button class="btn-secondary" onclick="syncMatchesFromESPN()">🔄 Sincronizar Partidos desde ESPN</button>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <button class="btn-secondary" onclick="syncMatchesFromESPN()">🔄 Sincronizar Partidos desde ESPN</button>
+          <button class="btn-secondary" onclick="fixGroupsFromESPN()">🗂️ Corregir Grupos</button>
+        </div>
       </div>
       <div class="results-form" id="results-form">
         <!-- Se genera con JavaScript -->
@@ -262,6 +266,99 @@
       </div>
     </div>
 
+  </div>
+</div>
+
+<!-- ===== MÁS INFORMACIÓN PAGE ===== -->
+<div id="page-info" class="page">
+  <div class="info-hero-banner">
+    <div class="info-hero-content">
+      <p class="info-school-label">Instituto Nuestra Señora del Carmen</p>
+      <h1>Proyecto PRODE 2026</h1>
+      <p class="info-hero-tagline">Una iniciativa solidaria de 5° Año</p>
+    </div>
+  </div>
+
+  <div class="page-content">
+
+    <div class="info-cards-row">
+      <div class="info-detail-card">
+        <div class="info-detail-icon">⚽</div>
+        <h2>¿De qué se trata?</h2>
+        <p>
+          El PRODE Copa Mundial 2026 es un proyecto desarrollado por los alumnos de
+          <strong>5° Año del INSC</strong> como actividad de recaudación de fondos
+          para financiar su viaje solidario a <strong>Akamasoa</strong>.
+        </p>
+        <p>
+          A través del pronóstico de partidos del Mundial 2026, los participantes
+          acumulan puntos y compiten por premios, mientras contribuyen a algo
+          mucho más grande: acercarse a las comunidades que más lo necesitan.
+        </p>
+      </div>
+
+      <div class="info-detail-card info-card-highlight">
+        <div class="info-detail-icon">🌍</div>
+        <h2>¿Qué es Akamasoa?</h2>
+        <p>
+          <strong>Akamasoa</strong> (que significa <em>"los buenos amigos"</em> en malgache)
+          es una organización humanitaria fundada por el Padre Pedro Opeka en
+          Madagascar. Su misión es brindar vivienda, educación y trabajo digno
+          a miles de familias en situación de pobreza extrema.
+        </p>
+        <p>
+          El viaje a Akamasoa representa para los alumnos una experiencia de vida única:
+          vivir la solidaridad de cerca y entender el valor del servicio al prójimo.
+        </p>
+      </div>
+    </div>
+
+    <div class="info-context-section">
+      <h2>Contexto académico</h2>
+      <p>
+        Este proyecto fue desarrollado en el marco de la materia
+        <strong>Proyecto de Producción</strong> del INSC, bajo la conducción del docente
+        <strong>Julián Búsico</strong>, trabajando en conjunto con la docente de
+        Catequesis <strong>Josefina Fernández</strong>, quien impulsó la dimensión
+        solidaria y espiritual de la iniciativa.
+      </p>
+    </div>
+
+    <div class="info-credits-section">
+      <h2>Créditos</h2>
+      <div class="credits-grid">
+        <div class="credit-item">
+          <span class="credit-icon">👩‍💻👨‍💻</span>
+          <div class="credit-text">
+            <strong>Desarrollo</strong>
+            <span>Alumnos de 5° Año – INSC · 2026</span>
+          </div>
+        </div>
+        <div class="credit-item">
+          <span class="credit-icon">👨‍🏫</span>
+          <div class="credit-text">
+            <strong>Docente de Proyecto de Producción</strong>
+            <span>Julián Búsico</span>
+          </div>
+        </div>
+        <div class="credit-item">
+          <span class="credit-icon">✝️</span>
+          <div class="credit-text">
+            <strong>Docente de Catequesis</strong>
+            <span>Josefina Fernández</span>
+          </div>
+        </div>
+        <div class="credit-item">
+          <span class="credit-icon">🏫</span>
+          <div class="credit-text">
+            <strong>Institución</strong>
+            <span>Instituto Nuestra Señora del Carmen (INSC)</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn-secondary" onclick="showPage('page-home')" style="margin-top:12px;">← Volver al Inicio</button>
   </div>
 </div>
 
@@ -392,6 +489,17 @@
     </div>
   </div>
 </div>
+
+<!-- ===== FOOTER ===== -->
+<footer class="site-footer">
+  <div class="site-footer-inner">
+    <p class="footer-credit">
+      ⚽ Proyecto realizado por alumnos de <strong>5° Año</strong> &mdash;
+      <strong>Instituto Nuestra Señora del Carmen (INSC)</strong> · 2026
+    </p>
+    <button class="footer-info-btn" onclick="showPage('page-info')">Más información</button>
+  </div>
+</footer>
 
 <!-- Scripts -->
 <script src="config.js"></script>

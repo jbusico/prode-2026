@@ -24,6 +24,34 @@ router.post('/sync', async (req, res) => {
   }
 });
 
+// POST /api/matches/fix-groups - Asigna grupos a partidos de Fase de Grupos que no los tienen
+router.post('/fix-groups', async (req, res) => {
+  try {
+    const groupMap = await buildGroupMapFromStandings();
+    if (Object.keys(groupMap).length === 0) {
+      return res.status(503).json({ error: 'No se pudo obtener grupos desde ESPN. Intentá de nuevo.' });
+    }
+    console.log(`📊 Mapa de grupos obtenido: ${Object.keys(groupMap).length} equipos`);
+
+    const matches = await Match.find({ phase: 'Fase de Grupos' }).lean();
+    let fixed = 0;
+
+    for (const match of matches) {
+      const group = groupMap[match.homeTeam] || groupMap[match.awayTeam] || null;
+      if (group && match.group !== group) {
+        await Match.findByIdAndUpdate(match._id, { group });
+        fixed++;
+        console.log(`  ✅ ${match.homeTeam} vs ${match.awayTeam} → Grupo ${group}`);
+      }
+    }
+
+    res.json({ success: true, fixed, total: matches.length, teams: Object.keys(groupMap).length });
+  } catch (err) {
+    console.error('Error en fix-groups:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // PUT /api/matches/:id/result - Admin actualiza resultado de un partido
 router.put('/:id/result', async (req, res) => {
   const { homeScore, awayScore } = req.body;
@@ -114,6 +142,54 @@ function getAllDates(startISO, endISO) {
   return dates;
 }
 
+async function buildGroupMapFromStandings() {
+  const urls = [
+    'https://site.api.espn.com/apis/v2/sports/soccer/fifa.world/standings',
+    'https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/standings'
+  ];
+
+  for (const url of urls) {
+    try {
+      const res = await fetch(url);
+      if (!res.ok) continue;
+      const data = await res.json();
+      const map = {};
+
+      // ESPN puede devolver distintas estructuras según la temporada
+      const groups =
+        data.standings?.groups ||
+        data.standings ||
+        data.groups ||
+        [];
+
+      for (const group of (Array.isArray(groups) ? groups : [])) {
+        const groupName = group.name || group.shortDisplayName || group.displayName || '';
+        const letter = groupName.match(/[Gg]roup\s+([A-La-l])/i);
+        if (!letter) continue;
+        const g = letter[1].toUpperCase();
+
+        const entries =
+          group.standings?.entries ||
+          group.entries ||
+          [];
+
+        for (const entry of entries) {
+          const name = entry.team?.displayName || entry.team?.name;
+          if (name) map[name] = g;
+        }
+      }
+
+      if (Object.keys(map).length > 0) {
+        console.log(`📊 Standings obtenidos de: ${url} (${Object.keys(map).length} equipos)`);
+        return map;
+      }
+    } catch (e) {
+      console.warn(`⚠️ Standings fallido en ${url}:`, e.message);
+    }
+  }
+  return {};
+}
+
 async function fetchEventSummary(eventId) {
   try {
     const url = `https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/summary?event=${eventId}`;
@@ -126,6 +202,9 @@ async function fetchEventSummary(eventId) {
 }
 
 async function syncFromESPN() {
+  const groupMap = await buildGroupMapFromStandings();
+  console.log(`📊 Mapa de grupos pre-sync: ${Object.keys(groupMap).length} equipos`);
+
   const dates = getAllDates('2026-06-11', '2026-07-19');
   const allEvents = [];
 
@@ -183,6 +262,11 @@ async function syncFromESPN() {
               || getGroupFromEventName(summary.header?.competitions?.[0]?.season?.name)
               || getGroupFromEventName(summary.pickcenter?.[0]?.gameInfo?.venue?.name);
       }
+    }
+
+    // Fallback: usar el mapa de standings si todavía sin grupo
+    if (phase === 'Fase de Grupos' && !group && Object.keys(groupMap).length > 0) {
+      group = groupMap[homeTeam] || groupMap[awayTeam] || null;
     }
 
     const matchData = {
