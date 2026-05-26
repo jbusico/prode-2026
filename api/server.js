@@ -10,9 +10,6 @@ app.use(cors({ origin: '*', credentials: true }));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../frontend')));
 
-const cron = require('node-cron');
-const { syncFromESPN } = require('./routes/matches');
-
 const authRoutes = require('./routes/auth');
 const usersRoutes = require('./routes/users');
 const matchesRoutes = require('./routes/matches');
@@ -86,21 +83,23 @@ if (process.env.MONGODB_URI) {
       await seedAdmin();
       await seedPrizes();
 
-      // Sync automático: todos los días a las 00:00, 06:00, 12:00 y 18:00 (hora Argentina, UTC-3)
-      // Cron en UTC: 03:00, 09:00, 15:00, 21:00
-      cron.schedule('0 3,9,15,21 * * *', async () => {
-        const AuditLog = require('./models/AuditLog');
-        console.log('⏰ Sync automático iniciado...');
-        try {
-          const count = await syncFromESPN();
-          console.log(`⏰ Sync automático completo: ${count} partidos`);
-          await AuditLog.create({ accion: 'sync_espn', detalles: { partidos: count, resultado: 'ok' } });
-        } catch (err) {
-          console.error('⏰ Error en sync automático:', err.message);
-          await AuditLog.create({ accion: 'sync_espn', detalles: { resultado: 'error', error: err.message } }).catch(() => {});
-        }
-      });
-      console.log('⏰ Sync automático programado (cada 6 horas)');
+      if (!process.env.VERCEL) {
+        const cron = require('node-cron');
+        const { syncFromESPN } = require('./routes/matches');
+        cron.schedule('0 3,9,15,21 * * *', async () => {
+          const AuditLog = require('./models/AuditLog');
+          console.log('⏰ Sync automático iniciado...');
+          try {
+            const count = await syncFromESPN();
+            console.log(`⏰ Sync automático completo: ${count} partidos`);
+            await AuditLog.create({ accion: 'sync_espn', detalles: { partidos: count, resultado: 'ok' } });
+          } catch (err) {
+            console.error('⏰ Error en sync automático:', err.message);
+            await AuditLog.create({ accion: 'sync_espn', detalles: { resultado: 'error', error: err.message } }).catch(() => {});
+          }
+        });
+        console.log('⏰ Sync automático programado (cada 6 horas)');
+      }
     })
     .catch(err => console.error('❌ Error MongoDB:', err.message));
 }
