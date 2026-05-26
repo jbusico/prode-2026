@@ -25,20 +25,6 @@ const PHASE_ORDER = [
 
 const GROUP_ORDER = ['A','B','C','D','E','F','G','H','I','J','K','L'];
 
-// ===== PREMIOS =====
-const PRIZES = {
-  prode: [
-    { position: '1', name: 'Primer Premio PRODE', image: 'primerpremioprode.png' },
-    { position: '2', name: 'Segundo Premio PRODE', image: 'segundopermioprode.png' },
-    { position: '3', name: 'Tercer Premio PRODE', image: 'tercerpremioprode.png' }
-  ],
-  rifa: [
-    { position: '1', name: 'Primer Premio Rifa', image: 'primerpremiorifa.png' },
-    { position: '2', name: 'Segundo Premio Rifa', image: 'segundopremiorifa.png' },
-    { position: '3', name: 'Tercer Premio Rifa', image: 'tercerpermiorifa.png' }
-  ]
-};
-
 // ===== VARIABLES GLOBALES =====
 let users = {};
 let currentUser = null;

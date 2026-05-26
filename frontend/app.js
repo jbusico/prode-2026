@@ -426,9 +426,9 @@ function updateStatusIndicator(isSaving) {
 
 // ===== PRIZES PAGE =====
 
-function renderPrizesUI() {
+async function renderPrizesUI() {
   renderRanking();
-  renderPrizes();
+  await renderPrizes();
 }
 
 function renderRanking() {
@@ -485,21 +485,39 @@ function renderRanking() {
   });
 }
 
-function renderPrizes() {
-  const grid = document.getElementById('prizes-grid');
-  grid.innerHTML = '';
-  [...PRIZES.prode, ...PRIZES.rifa].forEach(prize => {
-    const card  = document.createElement('div');
+async function renderPrizes() {
+  const gridProde = document.getElementById('prizes-grid-prode');
+  const gridRifa  = document.getElementById('prizes-grid-rifa');
+  gridProde.innerHTML = '<p style="color:var(--text-light)">Cargando...</p>';
+  gridRifa.innerHTML  = '';
+
+  let prizes;
+  try {
+    prizes = await apiCall('GET', '/api/prizes');
+  } catch {
+    gridProde.innerHTML = '<p style="color:var(--text-light)">Error al cargar premios.</p>';
+    return;
+  }
+
+  const labels = { 1: '1er Lugar', 2: '2do Lugar', 3: '3er Lugar' };
+
+  function buildCard(prize) {
+    const card = document.createElement('div');
     card.className = 'prize-card';
-    const label = prize.position === '1' ? '1er Lugar' : prize.position === '2' ? '2do Lugar' : '3er Lugar';
     card.innerHTML = `
-      <img src="${prize.image}" alt="${prize.name}" class="prize-image" onerror="this.style.display='none'">
+      ${prize.imageUrl ? `<img src="${escapeHTML(prize.imageUrl)}" alt="${escapeHTML(prize.name)}" class="prize-image" onerror="this.style.display='none'">` : ''}
       <div class="prize-info">
-        <div class="prize-category">${label}</div>
+        <div class="prize-category">${labels[prize.position] || ''}</div>
         <div class="prize-title">${escapeHTML(prize.name)}</div>
+        ${prize.description ? `<div class="prize-desc">${escapeHTML(prize.description)}</div>` : ''}
       </div>`;
-    grid.appendChild(card);
-  });
+    return card;
+  }
+
+  gridProde.innerHTML = '';
+  gridRifa.innerHTML  = '';
+  prizes.filter(p => p.category === 'prode').forEach(p => gridProde.appendChild(buildCard(p)));
+  prizes.filter(p => p.category === 'rifa').forEach(p => gridRifa.appendChild(buildCard(p)));
 }
 
 function openViewPredictions(dni) {

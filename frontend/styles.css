@@ -610,6 +610,7 @@ button { font-family: 'Barlow', sans-serif; }
 .prize-info { padding: 16px; text-align: center; }
 .prize-title { font-weight: 700; color: var(--azul); font-size: 16px; margin-bottom: 4px; }
 .prize-category { color: var(--text-light); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+.prize-desc { color: var(--text-light); font-size: 13px; margin-top: 4px; }
 
 /* ===== ADMIN SECTION ===== */
 .admin-tabs {
