@@ -296,13 +296,19 @@ function showPage(pageId) {
   document.querySelectorAll('.page').forEach(p => {
     p.classList.remove('active');
   });
-  
+
   // Mostrar la seleccionada
   const page = document.getElementById(pageId);
   if (page) {
     page.classList.add('active');
   }
-  
+
+  // Ocultar navbar en login, mostrar en el resto
+  const navbar = document.getElementById('navbar');
+  if (navbar) {
+    navbar.style.display = pageId === 'page-login' ? 'none' : 'flex';
+  }
+
   // Scroll al top
   window.scrollTo(0, 0);
 }
