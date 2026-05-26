@@ -882,3 +882,134 @@ button { font-family: 'Barlow', sans-serif; }
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ===== FASES Y GRUPOS DE PARTIDOS ===== */
+
+/* Sección de fase (ej: FASE DE GRUPOS, RONDA DE 32) */
+.phase-section {
+  margin-top: 40px;
+  margin-bottom: 24px;
+}
+
+/* Header de fase */
+.phase-header {
+  border-bottom: 3px solid var(--rojo);
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+}
+
+.phase-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 26px;
+  letter-spacing: 2px;
+  color: var(--azul);
+  margin: 0;
+}
+
+/* Sección de grupo (dentro de Fase de Grupos) */
+.group-section {
+  margin-bottom: 28px;
+}
+
+/* Header de grupo */
+.group-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 6px 14px;
+  background: var(--azul);
+  border-radius: 6px;
+  width: fit-content;
+}
+
+.group-title {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: white !important;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+/* Match meta (fecha + ciudad) */
+.match-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  gap: 8px;
+}
+
+.match-venue {
+  font-size: 11px;
+  color: var(--text-light);
+  text-align: right;
+  max-width: 140px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Resultado en el vs */
+.match-vs.has-result {
+  font-weight: 800;
+  font-size: 18px;
+  color: var(--rojo);
+  background: rgba(178, 34, 52, 0.08);
+  padding: 4px 10px;
+  border-radius: 6px;
+}
+
+/* Estado sin partidos */
+.empty-matches {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-light);
+  background: var(--gris-claro);
+  border-radius: 12px;
+  border: 2px dashed var(--gris-medio);
+  margin: 20px 0;
+}
+
+/* Admin: separadores de fase y grupo en resultados */
+.phase-header-admin {
+  background: var(--azul);
+  color: white !important;
+  padding: 10px 16px;
+  border-radius: 8px;
+  margin: 24px 0 10px;
+  font-size: 14px;
+  letter-spacing: 1px;
+}
+
+.phase-header-admin strong {
+  color: white !important;
+}
+
+.group-label-admin {
+  padding: 4px 12px;
+  margin: 10px 0 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--azul) !important;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-left: 3px solid var(--azul);
+}
+
+/* Botón sincronizar en admin */
+.sync-btn-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+/* Responsive fases */
+@media (max-width: 768px) {
+  .phase-title { font-size: 20px; }
+  .group-header { padding: 5px 10px; }
+  .group-title { font-size: 12px; }
+}

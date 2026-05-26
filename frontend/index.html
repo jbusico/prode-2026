@@ -209,11 +209,14 @@
 
     <!-- TAB: RESULTADOS -->
     <div id="admin-results-tab" class="admin-tab">
-      <h3>Ingresar Resultados de Partidos</h3>
+      <div class="sync-btn-wrap">
+        <h3 style="margin:0;">Ingresar Resultados de Partidos</h3>
+        <button class="btn-secondary" onclick="syncMatchesFromESPN()">🔄 Sincronizar Partidos desde ESPN</button>
+      </div>
       <div class="results-form" id="results-form">
         <!-- Se genera con JavaScript -->
       </div>
-      <button class="btn-primary" onclick="saveResultsWithLoader()">Guardar Resultados</button>
+      <button class="btn-primary" onclick="saveResultsWithLoader()" style="margin-top:16px;">Guardar Resultados</button>
     </div>
 
     <!-- TAB: PUNTAJES -->

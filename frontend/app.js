@@ -5,26 +5,29 @@
 
 async function initApp() {
   console.log('🚀 Inicializando aplicación...');
+
   try {
+    users    = getFromStorage('insc_users', {});
     auditLog = getFromStorage('insc_audit_log', []);
 
-    const token = localStorage.getItem('prode_token');
-    const savedUser = getFromStorage('prode_user');
+    if (Object.keys(users).length === 0) {
+      console.log('📝 Creando usuarios de demostración...');
+      await createDemoUsers();
+    }
 
-    if (token && savedUser) {
-      currentUser = savedUser.dni;
-      users[savedUser.dni] = savedUser;
+    // Cargar partidos desde la API (con fallback a caché local)
+    await loadMatchesFromAPI();
+
+    const savedUser = getFromStorage('insc_current');
+    if (savedUser && users[savedUser]) {
+      currentUser = savedUser;
       updateUIAfterLogin();
       showPage('page-home');
       logAudit('LOGIN_RESTORED', { método: 'sesión guardada' });
-
-      // Refrescar datos del usuario en background
-      apiCall('GET', `/api/users/${savedUser.dni}`)
-        .then(u => { users[u.dni] = u; saveToStorage('prode_user', u); })
-        .catch(() => {});
     } else {
       showPage('page-login');
     }
+
     console.log('✅ Aplicación inicializada');
   } catch (error) {
     console.error('❌ Error inicializando:', error);
@@ -32,15 +35,46 @@ async function initApp() {
   }
 }
 
+async function loadMatchesFromAPI() {
+  try {
+    const res = await fetch('/api/matches');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    MATCHES = data;
+    if (MATCHES.length > 0) saveToStorage('insc_matches_cache', MATCHES);
+    console.log(`📋 ${MATCHES.length} partidos cargados desde API`);
+  } catch (err) {
+    console.warn('⚠️ API no disponible, usando caché:', err.message);
+    MATCHES = getFromStorage('insc_matches_cache', []);
+  }
+}
+
+async function createDemoUsers() {
+  users['11222333'] = {
+    dni: '11222333',
+    nombre: 'Administrador',
+    email: 'admin@prode.local',
+    pass: '11222333',
+    passHash: null,
+    paid: false,
+    saved: false,
+    predictions: {},
+    rifas: 0,
+    isAdmin: true,
+    createdAt: new Date().toISOString()
+  };
+  saveToStorage('insc_users', users);
+}
+
 // ===== AUTENTICACIÓN =====
 
 async function handleLogin(event) {
   event.preventDefault();
 
-  const dniInput = document.getElementById('login-dni').value.trim();
+  const dniInput  = document.getElementById('login-dni').value.trim();
   const passInput = document.getElementById('login-pass').value;
 
-  document.getElementById('dni-error').textContent = '';
+  document.getElementById('dni-error').textContent  = '';
   document.getElementById('pass-error').textContent = '';
 
   const dniVal = validateDNI(dniInput);
@@ -48,49 +82,64 @@ async function handleLogin(event) {
     document.getElementById('dni-error').textContent = dniVal.error;
     return;
   }
+
   if (!passInput) {
     document.getElementById('pass-error').textContent = 'La contraseña es requerida';
     return;
   }
 
   if (isLoginBlocked(dniInput)) {
-    const remaining = getRemainingBlockTime(dniInput);
-    showToast(`Demasiados intentos. Bloqueado ${Math.ceil(remaining / 60)} minutos.`, 'error');
+    const mins = Math.ceil(getRemainingBlockTime(dniInput) / 60);
+    showToast(`Demasiados intentos. Bloqueado ${mins} minutos.`, 'error');
     return;
   }
 
   showLoading('Verificando credenciales...');
+
   try {
-    const { token, user } = await apiCall('POST', '/api/auth/login', {
-      dni: dniInput,
-      password: passInput
-    });
-
-    localStorage.setItem('prode_token', token);
-
-    const fullUser = await apiCall('GET', `/api/users/${user.dni}`);
-    users[user.dni] = fullUser;
-    saveToStorage('prode_user', fullUser);
-    currentUser = user.dni;
-
+    await new Promise(r => setTimeout(r, 500));
+    const success = await attemptLogin(dniInput, passInput);
     hideLoading();
-    logAudit('LOGIN_SUCCESS', { dni: dniInput });
-    clearLoginErrors(dniInput);
 
-    document.getElementById('login-dni').value = '';
-    document.getElementById('login-pass').value = '';
-
-    updateUIAfterLogin();
-    showPage('page-home');
-    showToast(`¡Bienvenido, ${fullUser.nombre}!`, 'success');
+    if (success) {
+      logAudit('LOGIN_SUCCESS', { dni: dniInput });
+      clearLoginErrors(dniInput);
+      document.getElementById('login-dni').value  = '';
+      document.getElementById('login-pass').value = '';
+      updateUIAfterLogin();
+      showPage('page-home');
+      showToast(`¡Bienvenido, ${users[dniInput].nombre}!`, 'success');
+    } else {
+      logAudit('LOGIN_FAILED', { dni: dniInput, razón: 'credenciales inválidas' });
+      recordLoginAttempt(dniInput);
+      document.getElementById('pass-error').textContent = 'DNI o contraseña incorrectos';
+      showToast('DNI o contraseña incorrectos', 'error');
+      updateAttemptWarning(dniInput);
+    }
   } catch (error) {
     hideLoading();
-    logAudit('LOGIN_FAILED', { dni: dniInput, razón: error.message });
-    recordLoginAttempt(dniInput);
-    document.getElementById('pass-error').textContent = 'DNI o contraseña incorrectos';
-    showToast('DNI o contraseña incorrectos', 'error');
-    updateAttemptWarning(dniInput);
+    console.error('Error en login:', error);
+    showToast('Error al iniciar sesión', 'error');
   }
+}
+
+async function attemptLogin(dni, password) {
+  if (!users[dni]) return false;
+
+  const user = users[dni];
+  let isValid = false;
+
+  if (user.pass && user.pass === password) {
+    isValid = true;
+  } else if (user.passHash) {
+    isValid = await comparePassword(password, user.passHash);
+  }
+
+  if (!isValid) return false;
+
+  currentUser = dni;
+  saveToStorage('insc_current', dni);
+  return true;
 }
 
 function recordLoginAttempt(dni) {
@@ -102,9 +151,8 @@ function recordLoginAttempt(dni) {
 
 function isLoginBlocked(dni) {
   if (!loginAttempts[dni]) return false;
-  const now = Date.now();
   const { count, timestamp } = loginAttempts[dni];
-  if (now - timestamp > BLOCK_DURATION) { delete loginAttempts[dni]; return false; }
+  if (Date.now() - timestamp > BLOCK_DURATION) { delete loginAttempts[dni]; return false; }
   return count >= MAX_LOGIN_ATTEMPTS;
 }
 
@@ -114,13 +162,13 @@ function getRemainingBlockTime(dni) {
 }
 
 function updateAttemptWarning(dni) {
-  const warningBox = document.getElementById('login-attempts-warning');
+  const box       = document.getElementById('login-attempts-warning');
   const remaining = MAX_LOGIN_ATTEMPTS - (loginAttempts[dni]?.count || 0);
   if (remaining <= 0) {
-    warningBox.classList.remove('hidden');
+    box.classList.remove('hidden');
     document.getElementById('attempts-remaining').textContent = '0';
   } else if (remaining < MAX_LOGIN_ATTEMPTS) {
-    warningBox.classList.remove('hidden');
+    box.classList.remove('hidden');
     document.getElementById('attempts-remaining').textContent = remaining;
   }
 }
@@ -136,311 +184,376 @@ function doLogout() {
     () => {
       logAudit('LOGOUT', { dni: currentUser });
       currentUser = null;
-      users = {};
-      localStorage.removeItem('prode_token');
-      clearStorage('prode_user');
+      clearStorage('insc_current');
       showPage('page-login');
       showToast('Sesión cerrada', 'info');
-      document.getElementById('login-dni').value = '';
+      document.getElementById('login-dni').value  = '';
       document.getElementById('login-pass').value = '';
     },
-    false,
-    'Cerrar Sesión'
+    false, 'Cerrar Sesión'
   );
+}
+
+function showRegisterModal(event) {
+  event.preventDefault();
+  showToast('El registro está deshabilitado. Usá las credenciales de acceso.', 'info');
 }
 
 // ===== UI UPDATE =====
 
-async function updateUIAfterLogin() {
+function updateUIAfterLogin() {
   const user = users[currentUser];
+
   document.getElementById('navbar').style.display = 'flex';
   document.getElementById('nav-user-text').textContent = user.nombre;
   document.getElementById('nav-admin').style.display = user.isAdmin ? 'block' : 'none';
 
   renderProdeUI();
-  await renderPrizesUI();
+  renderPrizesUI();
   if (user.isAdmin) renderAdminUI();
-}
-
-// ===== REGISTER =====
-
-function showRegisterModal(event) {
-  event.preventDefault();
-  showToast('El registro está deshabilitado. Contactá al administrador.', 'info');
 }
 
 // ===== PRODE PAGE =====
 
 function renderProdeUI() {
   const container = document.getElementById('matches-container');
-  const user = users[currentUser];
-  const predictions = user.predictions || {};
+  const preds     = (users[currentUser] && users[currentUser].predictions) || {};
 
   container.innerHTML = '';
-  let matchIndex = 0;
 
-  Object.keys(MATCHES).forEach(groupName => {
-    const matches = MATCHES[groupName];
+  if (!MATCHES || MATCHES.length === 0) {
+    container.innerHTML = `
+      <div class="empty-matches">
+        <p>No hay partidos cargados aún.</p>
+        <p style="font-size:13px; color:var(--text-light); margin-top:8px;">
+          El administrador debe sincronizar los partidos desde el Panel de Administración.
+        </p>
+      </div>`;
+    return;
+  }
 
-    const groupHeader = document.createElement('div');
-    groupHeader.style.cssText = `
-      margin-top: 32px; margin-bottom: 16px;
-      padding: 0 16px; border-left: 4px solid var(--rojo);
-    `;
-    groupHeader.innerHTML = `
-      <h2 style="font-size: 20px; color: var(--azul); font-weight: 700; margin: 0;">
-        ${groupName.toUpperCase()}
-      </h2>
-    `;
-    container.appendChild(groupHeader);
+  // Agrupar por fase
+  const byPhase = {};
+  MATCHES.forEach(m => {
+    if (!byPhase[m.phase]) byPhase[m.phase] = [];
+    byPhase[m.phase].push(m);
+  });
 
-    matches.forEach(match => {
-      const pred = predictions[matchIndex] || { home: '', away: '' };
-      const card = document.createElement('div');
-      card.className = 'match-card';
-      card.innerHTML = `
-        <div class="match-date">${match.date}</div>
-        <div class="match-teams">
-          <div class="match-team">${match.home}</div>
-          <div class="match-vs">vs</div>
-          <div class="match-team">${match.away}</div>
-        </div>
-        <div class="match-inputs">
-          <input type="number" class="match-input" min="0" max="20"
-            value="${pred.home}" id="pred-home-${matchIndex}" placeholder="0">
-          <div class="match-dash">–</div>
-          <input type="number" class="match-input" min="0" max="20"
-            value="${pred.away}" id="pred-away-${matchIndex}" placeholder="0">
-        </div>
-      `;
-      container.appendChild(card);
-      matchIndex++;
-    });
+  PHASE_ORDER.forEach(phase => {
+    const phaseMatches = byPhase[phase];
+    if (!phaseMatches || phaseMatches.length === 0) return;
+
+    const phaseSection = document.createElement('div');
+    phaseSection.className = 'phase-section';
+
+    const phaseHeader = document.createElement('div');
+    phaseHeader.className = 'phase-header';
+    phaseHeader.innerHTML = `<h2 class="phase-title">${phase.toUpperCase()}</h2>`;
+    phaseSection.appendChild(phaseHeader);
+
+    if (phase === 'Fase de Grupos') {
+      const byGroup = {};
+      phaseMatches.forEach(m => {
+        const g = m.group || '?';
+        if (!byGroup[g]) byGroup[g] = [];
+        byGroup[g].push(m);
+      });
+
+      GROUP_ORDER.forEach(gl => {
+        const gMatches = byGroup[gl];
+        if (!gMatches || gMatches.length === 0) return;
+
+        const groupSection = document.createElement('div');
+        groupSection.className = 'group-section';
+
+        const groupHeader = document.createElement('div');
+        groupHeader.className = 'group-header';
+        groupHeader.innerHTML = `<h3 class="group-title">Grupo ${gl}</h3>`;
+        groupSection.appendChild(groupHeader);
+
+        gMatches
+          .sort((a, b) => new Date(a.date) - new Date(b.date))
+          .forEach(m => {
+            groupSection.appendChild(createMatchCard(m, preds[m._id] || { home: '', away: '' }));
+          });
+
+        phaseSection.appendChild(groupSection);
+      });
+
+      // Matches sin grupo asignado
+      if (byGroup['?']?.length) {
+        const noGroup = document.createElement('div');
+        noGroup.className = 'group-section';
+        noGroup.innerHTML = '<div class="group-header"><h3 class="group-title">Sin grupo asignado</h3></div>';
+        byGroup['?']
+          .sort((a, b) => new Date(a.date) - new Date(b.date))
+          .forEach(m => {
+            noGroup.appendChild(createMatchCard(m, preds[m._id] || { home: '', away: '' }));
+          });
+        phaseSection.appendChild(noGroup);
+      }
+    } else {
+      phaseMatches
+        .sort((a, b) => new Date(a.date) - new Date(b.date))
+        .forEach(m => {
+          phaseSection.appendChild(createMatchCard(m, preds[m._id] || { home: '', away: '' }));
+        });
+    }
+
+    container.appendChild(phaseSection);
   });
 }
+
+function createMatchCard(match, pred) {
+  const id         = match._id;
+  const hasResult  = match.homeScore !== null && match.awayScore !== null;
+  const isFinished = match.status === 'finished';
+  const card       = document.createElement('div');
+  card.className   = 'match-card';
+
+  card.innerHTML = `
+    <div class="match-meta">
+      <span class="match-date">${match.dateStr || ''}</span>
+      ${match.city ? `<span class="match-venue">${escapeHTML(match.city)}</span>` : ''}
+    </div>
+    <div class="match-teams">
+      <div class="match-team">${escapeHTML(match.homeTeam)}</div>
+      <div class="match-vs${hasResult ? ' has-result' : ''}">${hasResult ? match.homeScore + ' – ' + match.awayScore : 'vs'}</div>
+      <div class="match-team">${escapeHTML(match.awayTeam)}</div>
+    </div>
+    <div class="match-inputs">
+      <input type="number" class="match-input" min="0" max="20"
+        value="${pred.home}" id="pred-home-${id}" placeholder="0"
+        ${isFinished ? 'disabled title="Partido finalizado"' : ''}>
+      <div class="match-dash">–</div>
+      <input type="number" class="match-input" min="0" max="20"
+        value="${pred.away}" id="pred-away-${id}" placeholder="0"
+        ${isFinished ? 'disabled title="Partido finalizado"' : ''}>
+    </div>`;
+  return card;
+}
+
+// ===== GUARDAR PRONÓSTICOS =====
 
 async function saveProdeWithLoader() {
   showLoading('Guardando pronósticos...');
   try {
-    await saveProde();
+    await new Promise(r => setTimeout(r, 500));
+    const success = saveProde();
     hideLoading();
-    updateStatusIndicator(true);
-    setTimeout(() => updateStatusIndicator(false), 3000);
+    if (success) {
+      updateStatusIndicator(true);
+      setTimeout(() => updateStatusIndicator(false), 3000);
+    }
   } catch (error) {
     hideLoading();
-    if (error.message !== 'Validation errors') {
-      showToast('Error al guardar pronósticos', 'error');
-    }
+    showToast('Error al guardar pronósticos', 'error');
   }
 }
 
-async function saveProde() {
-  const predictions = {};
-  let errors = [];
-  let matchIndex = 0;
+function saveProde() {
+  try {
+    const predictions = {};
+    const errors      = [];
 
-  Object.keys(MATCHES).forEach(groupName => {
-    MATCHES[groupName].forEach(() => {
-      const homeVal = document.getElementById(`pred-home-${matchIndex}`).value.trim();
-      const awayVal = document.getElementById(`pred-away-${matchIndex}`).value.trim();
+    for (const match of MATCHES) {
+      const id     = match._id;
+      const homeEl = document.getElementById(`pred-home-${id}`);
+      const awayEl = document.getElementById(`pred-away-${id}`);
+      if (!homeEl || !awayEl) continue;
+
+      const homeVal = homeEl.value.trim();
+      const awayVal = awayEl.value.trim();
 
       if (homeVal === '' && awayVal === '') {
-        predictions[matchIndex] = { home: '', away: '' };
-      } else if ((homeVal === '') !== (awayVal === '')) {
-        errors.push(`Partido ${matchIndex + 1}: Complete ambos marcadores`);
-      } else if (!/^\d+$/.test(homeVal) || !/^\d+$/.test(awayVal)) {
-        errors.push(`Partido ${matchIndex + 1}: Los marcadores deben ser números`);
-      } else {
-        const home = parseInt(homeVal);
-        const away = parseInt(awayVal);
-        if (home > 20 || away > 20) {
-          errors.push(`Partido ${matchIndex + 1}: Marcador poco realista`);
-        } else {
-          predictions[matchIndex] = { home, away };
-        }
+        predictions[id] = { home: '', away: '' };
+        continue;
       }
-      matchIndex++;
-    });
-  });
 
-  if (errors.length > 0) {
-    showToast('Errores: ' + errors.join(', '), 'error');
-    throw new Error('Validation errors');
+      if ((homeVal === '') !== (awayVal === '')) {
+        errors.push(`${match.homeTeam} vs ${match.awayTeam}: Complete ambos marcadores`);
+        continue;
+      }
+
+      if (!/^\d+$/.test(homeVal) || !/^\d+$/.test(awayVal)) {
+        errors.push(`${match.homeTeam} vs ${match.awayTeam}: Solo se aceptan números`);
+        continue;
+      }
+
+      const home = parseInt(homeVal);
+      const away = parseInt(awayVal);
+
+      if (home > 20 || away > 20) {
+        errors.push(`${match.homeTeam} vs ${match.awayTeam}: Marcador poco realista`);
+        continue;
+      }
+
+      predictions[id] = { home, away };
+    }
+
+    if (errors.length > 0) {
+      showToast(errors.slice(0, 3).join(' | '), 'error');
+      return false;
+    }
+
+    users[currentUser].predictions = predictions;
+    users[currentUser].saved       = true;
+    saveToStorage('insc_users', users);
+
+    logAudit('SAVE_PREDICTIONS', { cantidad: Object.keys(predictions).length });
+    showToast('✅ Pronósticos guardados correctamente', 'success');
+    return true;
+  } catch (error) {
+    console.error('Error guardando pronósticos:', error);
+    showToast('Error al guardar pronósticos', 'error');
+    return false;
   }
-
-  await apiCall('PUT', `/api/users/${currentUser}/predictions`, { predictions });
-
-  users[currentUser].predictions = predictions;
-  users[currentUser].saved = true;
-  saveToStorage('prode_user', users[currentUser]);
-
-  logAudit('SAVE_PREDICTIONS', { cantidad_predicciones: Object.keys(predictions).length });
-  showToast('✅ Pronósticos guardados correctamente', 'success');
 }
 
 function updateStatusIndicator(isSaving) {
-  const indicator = document.getElementById('status-indicator');
+  const indicator  = document.getElementById('status-indicator');
   const statusText = document.getElementById('status-text');
   if (isSaving) {
     indicator.style.display = 'flex';
-    statusText.textContent = 'Guardando...';
-    indicator.style.color = 'var(--warning)';
+    statusText.textContent  = 'Guardando...';
+    indicator.style.color   = 'var(--warning)';
   } else {
-    indicator.style.color = 'var(--success)';
-    statusText.textContent = 'Cambios guardados';
+    indicator.style.color   = 'var(--success)';
+    statusText.textContent  = 'Cambios guardados';
     setTimeout(() => { if (indicator) indicator.style.display = 'flex'; }, 3000);
   }
 }
 
 // ===== PRIZES PAGE =====
 
-async function renderPrizesUI() {
-  await renderRanking();
+function renderPrizesUI() {
+  renderRanking();
   renderPrizes();
 }
 
-async function renderRanking() {
-  try {
-    const [rankingUsers, resultsData] = await Promise.all([
-      apiCall('GET', '/api/predictions/ranking'),
-      apiCall('GET', '/api/results')
-    ]);
+function renderRanking() {
+  const results   = getFromStorage('insc_results', {});
+  const overrides = getFromStorage('insc_points_override', {});
+  const rankings  = [];
 
-    const results = resultsData.results || {};
-    const overrides = resultsData.overrides || {};
+  Object.values(users).forEach(u => {
+    if (!u.paid || u.isAdmin) return;
+    const preds   = u.predictions || {};
+    let acertados = 0;
 
-    rankingUsers.forEach(u => { users[u.dni] = u; });
-
-    const rankings = rankingUsers
-      .filter(u => !u.isAdmin)
-      .map(u => {
-        const preds = u.predictions || {};
-        let acertados = 0;
-        Object.keys(results).forEach(i => {
-          const r = results[i];
-          const p = preds[i];
-          if (p && String(p.home) === String(r.home) && String(p.away) === String(r.away)) acertados++;
-        });
-        const puntosAuto = acertados * 5;
-        const puntos = overrides[u.dni] !== undefined ? overrides[u.dni] : puntosAuto;
-        return { dni: u.dni, nombre: u.nombre, aciertos: acertados, puntos, puntosAuto };
-      })
-      .sort((a, b) => b.puntos - a.puntos);
-
-    const topThree = document.getElementById('top-three');
-    topThree.innerHTML = '';
-    const medals = ['🥇', '🥈', '🥉'];
-    const classNames = ['rank-1st', 'rank-2nd', 'rank-3rd'];
-    for (let i = 0; i < 3 && rankings[i]; i++) {
-      const card = document.createElement('div');
-      card.className = `rank-card ${classNames[i]}`;
-      card.innerHTML = `
-        <div class="rank-medal">${medals[i]}</div>
-        <div class="rank-name">${escapeHTML(rankings[i].nombre)}</div>
-        <div class="rank-points">${rankings[i].puntos} pts</div>
-      `;
-      topThree.appendChild(card);
-    }
-
-    const tbody = document.getElementById('scores-tbody');
-    tbody.innerHTML = '';
-    rankings.forEach((rank, index) => {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td>${index + 1}</td>
-        <td>${escapeHTML(rank.nombre)}</td>
-        <td>${rank.aciertos}</td>
-        <td>${rank.puntos}</td>
-        <td>
-          <button class="btn-secondary" onclick="openViewPredictions('${rank.dni}')">
-            Ver pronósticos
-          </button>
-        </td>
-      `;
-      tbody.appendChild(tr);
+    Object.keys(results).forEach(matchId => {
+      const r = results[matchId];
+      const p = preds[matchId];
+      if (p && r && String(p.home) === String(r.home) && String(p.away) === String(r.away)) acertados++;
     });
-  } catch (error) {
-    console.error('Error cargando ranking:', error);
+
+    const puntosAuto   = acertados * 5;
+    const puntosManual = overrides[u.dni];
+    const puntos       = puntosManual !== undefined ? puntosManual : puntosAuto;
+    rankings.push({ dni: u.dni, nombre: u.nombre, aciertos: acertados, puntos, puntosAuto });
+  });
+
+  rankings.sort((a, b) => b.puntos - a.puntos);
+
+  const topThree = document.getElementById('top-three');
+  topThree.innerHTML = '';
+  const medals  = ['🥇','🥈','🥉'];
+  const classes = ['rank-1st','rank-2nd','rank-3rd'];
+  for (let i = 0; i < 3; i++) {
+    if (!rankings[i]) break;
+    const card = document.createElement('div');
+    card.className = `rank-card ${classes[i]}`;
+    card.innerHTML = `
+      <div class="rank-medal">${medals[i]}</div>
+      <div class="rank-name">${escapeHTML(rankings[i].nombre)}</div>
+      <div class="rank-points">${rankings[i].puntos} pts</div>`;
+    topThree.appendChild(card);
   }
+
+  const tbody = document.getElementById('scores-tbody');
+  tbody.innerHTML = '';
+  rankings.forEach((rank, idx) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${idx + 1}</td>
+      <td>${escapeHTML(rank.nombre)}</td>
+      <td>${rank.aciertos}</td>
+      <td>${rank.puntos}</td>
+      <td><button class="btn-secondary" onclick="openViewPredictions('${rank.dni}')">Ver pronósticos</button></td>`;
+    tbody.appendChild(tr);
+  });
 }
 
 function renderPrizes() {
   const grid = document.getElementById('prizes-grid');
   grid.innerHTML = '';
   [...PRIZES.prode, ...PRIZES.rifa].forEach(prize => {
-    const card = document.createElement('div');
+    const card  = document.createElement('div');
     card.className = 'prize-card';
+    const label = prize.position === '1' ? '1er Lugar' : prize.position === '2' ? '2do Lugar' : '3er Lugar';
     card.innerHTML = `
       <img src="${prize.image}" alt="${prize.name}" class="prize-image" onerror="this.style.display='none'">
       <div class="prize-info">
-        <div class="prize-category">${prize.position === '1' ? '1er Lugar' : prize.position === '2' ? '2do Lugar' : '3er Lugar'}</div>
+        <div class="prize-category">${label}</div>
         <div class="prize-title">${escapeHTML(prize.name)}</div>
-      </div>
-    `;
+      </div>`;
     grid.appendChild(card);
   });
 }
 
-async function openViewPredictions(dni) {
-  try {
-    if (!users[dni] || !users[dni].predictions) {
-      users[dni] = await apiCall('GET', `/api/users/${dni}`);
+function openViewPredictions(dni) {
+  const u = users[dni];
+  if (!u) return;
+
+  const preds   = u.predictions || {};
+  const results = getFromStorage('insc_results', {});
+  let hits      = 0;
+
+  MATCHES.forEach(m => {
+    const p = preds[m._id];
+    const r = results[m._id];
+    if (p && r && r.home !== '' && String(p.home) === String(r.home) && String(p.away) === String(r.away)) hits++;
+  });
+
+  let rows = '';
+  MATCHES.forEach(m => {
+    const p       = preds[m._id];
+    const r       = results[m._id];
+    const hasPred = p && (p.home !== '' || p.away !== '');
+    const predStr = hasPred ? `${p.home} – ${p.away}` : '—';
+    const resStr  = r && r.home !== '' ? `${r.home} – ${r.away}` : '—';
+    let status    = '⏳';
+    if (r && r.home !== '' && hasPred) {
+      status = String(p.home) === String(r.home) && String(p.away) === String(r.away) ? '✅' : '❌';
     }
-    const u = users[dni];
-    const preds = u.predictions || {};
-    const resultsData = await apiCall('GET', '/api/results');
-    const results = resultsData.results || {};
+    rows += `
+      <tr>
+        <td>${escapeHTML(m.homeTeam)} vs ${escapeHTML(m.awayTeam)}</td>
+        <td>${m.dateStr || ''}</td>
+        <td style="text-align:center;">${predStr}</td>
+        <td style="text-align:center;">${resStr}</td>
+        <td style="text-align:center;">${status}</td>
+      </tr>`;
+  });
 
-    const allMatches = Object.values(MATCHES).flat();
-    let hits = 0;
-    allMatches.forEach((_, i) => {
-      const p = preds[i]; const r = results[i];
-      if (p && r && String(p.home) === String(r.home) && String(p.away) === String(r.away)) hits++;
-    });
-
-    let rows = '';
-    allMatches.forEach((m, i) => {
-      const p = preds[i]; const r = results[i];
-      const hasPred = p && (p.home !== '' || p.away !== '');
-      const predStr = hasPred ? `${p.home} – ${p.away}` : '—';
-      const resStr = r && r.home !== '' ? `${r.home} – ${r.away}` : '—';
-      let status = '⏳';
-      if (r && r.home !== '' && hasPred) {
-        status = String(p.home) === String(r.home) && String(p.away) === String(r.away) ? '✅' : '❌';
-      }
-      rows += `
-        <tr>
-          <td>${m.home} vs ${m.away}</td>
-          <td>${m.date}</td>
-          <td style="text-align:center;">${predStr}</td>
-          <td style="text-align:center;">${resStr}</td>
-          <td style="text-align:center;">${status}</td>
+  document.getElementById('modal-view-predictions-content').innerHTML = `
+    <table style="width:100%; border-collapse:collapse; font-size:13px;">
+      <thead>
+        <tr style="background:var(--azul); color:white;">
+          <th style="padding:8px; text-align:left;">Partido</th>
+          <th style="padding:8px; text-align:left;">Fecha</th>
+          <th style="padding:8px; text-align:center;">Pronóstico</th>
+          <th style="padding:8px; text-align:center;">Real</th>
+          <th style="padding:8px; text-align:center;">Estado</th>
         </tr>
-      `;
-    });
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <p style="margin-top:12px; color:var(--text-light); font-size:12px;">
+      ${u.saved ? '✅ Guardado' : '❌ No guardado'} · ${hits} aciertos · ${hits * 5} pts automáticos
+    </p>`;
 
-    document.getElementById('modal-view-predictions-content').innerHTML = `
-      <table style="width:100%; border-collapse:collapse; font-size:13px;">
-        <thead>
-          <tr style="background:var(--azul); color:white;">
-            <th style="padding:8px; text-align:left;">Partido</th>
-            <th style="padding:8px; text-align:left;">Fecha</th>
-            <th style="padding:8px; text-align:center;">Pronóstico</th>
-            <th style="padding:8px; text-align:center;">Real</th>
-            <th style="padding:8px; text-align:center;">Estado</th>
-          </tr>
-        </thead>
-        <tbody>${rows}</tbody>
-      </table>
-      <p style="margin-top:12px; color:var(--text-light); font-size:12px;">
-        ${u.saved ? '✅ Guardado' : '❌ No guardado'} · ${hits} aciertos · ${hits * 5} pts automáticos
-      </p>
-    `;
-    openModal('modal-view-predictions');
-  } catch (error) {
-    console.error('Error cargando predicciones:', error);
-    showToast('Error al cargar predicciones', 'error');
-  }
+  openModal('modal-view-predictions');
 }
 
 console.log('✅ App.js Parte 1 cargado');
