@@ -413,6 +413,110 @@ async function syncMatchesFromESPN() {
   );
 }
 
+// ===== ADMIN: CORREGIR GRUPOS =====
+
+async function fixGroupsFromESPN() {
+  showConfirm(
+    '¿Asignar grupos a los partidos de Fase de Grupos usando los standings de ESPN? Solo afecta partidos sin grupo asignado.',
+    async () => {
+      showLoading('Asignando grupos desde ESPN...');
+      try {
+        const res  = await fetch('/api/matches/fix-groups', { method: 'POST' });
+        const data = await res.json();
+
+        if (!res.ok) throw new Error(data.error || 'Error en servidor');
+
+        await loadMatchesFromAPI();
+        hideLoading();
+        renderAdminResults();
+        renderProdeUI();
+        showToast(`✅ ${data.fixed} partidos actualizados (${data.teams} equipos en mapa)`, 'success');
+        logAudit('FIX_GROUPS', { fixed: data.fixed, total: data.total });
+      } catch (err) {
+        hideLoading();
+        showToast(`Error al asignar grupos: ${err.message}`, 'error');
+      }
+    },
+    false, 'Asignar Grupos'
+  );
+}
+
+// ===== ADMIN: PUNTAJES =====
+
+function renderAdminScores() {
+  const tbody     = document.getElementById('admin-scores-tbody');
+  const results   = getFromStorage('insc_results', {});
+  const overrides = getFromStorage('insc_points_override', {});
+
+  tbody.innerHTML = '';
+
+  const participants = [];
+
+  Object.values(users).forEach(u => {
+    if (!u.paid || u.isAdmin) return;
+    const preds   = u.predictions || {};
+    let acertados  = 0;
+    let puntosAuto = 0;
+
+    Object.keys(results).forEach(matchId => {
+      const r   = results[matchId];
+      const p   = preds[matchId];
+      const pts = calcMatchPoints(p, r);
+      if (pts > 0) acertados++;
+      puntosAuto += pts;
+    });
+
+    participants.push({
+      dni: u.dni, nombre: u.nombre,
+      aciertos: acertados, puntosAuto,
+      puntosOverride: overrides[u.dni]
+    });
+  });
+
+  participants.sort((a, b) => a.nombre.localeCompare(b.nombre));
+
+  participants.forEach(p => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${escapeHTML(p.nombre)}</td>
+      <td>${p.dni}</td>
+      <td>${p.aciertos}</td>
+      <td>${p.puntosAuto}</td>
+      <td>
+        <input class="override-input" type="number"
+          value="${p.puntosOverride !== undefined ? p.puntosOverride : ''}"
+          placeholder="auto" id="ov-${p.dni}"
+          style="width:100%; padding:6px; border:1px solid var(--gris-medio); border-radius:4px;">
+      </td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+function saveAdminScores() {
+  try {
+    const overrides = getFromStorage('insc_points_override', {});
+    let cambios = 0;
+
+    Object.values(users).forEach(u => {
+      if (!u.paid || u.isAdmin) return;
+      const input = document.getElementById(`ov-${u.dni}`);
+      if (!input) return;
+      const value = input.value.trim();
+      if (value !== '') {
+        const num = Number(value);
+        if (!isNaN(num) && overrides[u.dni] !== num) { cambios++; overrides[u.dni] = num; }
+      } else if (overrides[u.dni] !== undefined) { cambios++; delete overrides[u.dni]; }
+    });
+
+    saveToStorage('insc_points_override', overrides);
+    logAudit('UPDATE_SCORES', { cambios });
+    renderRanking();
+    showToast(`✅ Puntajes guardados (${cambios} cambios)`, 'success');
+  } catch (error) {
+    showToast('Error al guardar puntajes', 'error');
+  }
+}
+
 // ===== ADMIN: AUDITORÍA =====
 
 async function renderAdminLogs() {

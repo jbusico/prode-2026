@@ -105,7 +105,9 @@ if (process.env.MONGODB_URI) {
     .catch(err => console.error('❌ Error MongoDB:', err.message));
 }
 
-const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => console.log(`🚀 Servidor en puerto ${PORT}`));
+if (!process.env.VERCEL) {
+  const PORT = process.env.PORT || 3001;
+  app.listen(PORT, () => console.log(`🚀 Servidor en puerto ${PORT}`));
+}
 
 module.exports = app;

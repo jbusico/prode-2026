@@ -218,7 +218,10 @@
     <div id="admin-results-tab" class="admin-tab">
       <div class="sync-btn-wrap">
         <h3 style="margin:0;">Ingresar Resultados de Partidos</h3>
-        <button class="btn-secondary" onclick="syncMatchesFromESPN()">🔄 Sincronizar Partidos desde ESPN</button>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <button class="btn-secondary" onclick="syncMatchesFromESPN()">🔄 Sincronizar Partidos desde ESPN</button>
+          <button class="btn-secondary" onclick="fixGroupsFromESPN()">🗂️ Corregir Grupos</button>
+        </div>
       </div>
       <div class="results-form" id="results-form">
         <!-- Se genera con JavaScript -->
