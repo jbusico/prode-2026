@@ -332,6 +332,30 @@ function downloadCSV(filename, data) {
   document.body.removeChild(link);
 }
 
+// ===== API HELPER =====
+
+async function apiCall(method, path, body = null) {
+  const token = localStorage.getItem('prode_token');
+  const headers = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const opts = { method, headers };
+  if (body) opts.body = JSON.stringify(body);
+
+  const res = await fetch(path, opts);
+  const data = await res.json();
+
+  if (res.status === 401) {
+    localStorage.removeItem('prode_token');
+    localStorage.removeItem('prode_user');
+    showPage('page-login');
+    throw new Error('Sesión expirada');
+  }
+
+  if (!res.ok) throw new Error(data.error || 'Error del servidor');
+  return data;
+}
+
 // ===== INICIALIZACIÓN =====
 
 console.log('✅ Utils.js cargado');

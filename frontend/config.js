@@ -44,30 +44,6 @@ const MATCHES = {
   ]
 };
 
-// ===== DATOS DE USUARIOS DE DEMOSTRACIÓN =====
-// El admin se crea automáticamente con DNI 11222333
-// El DNI debe tener entre 7-8 dígitos
-const DEMO_USERS = {
-  '11222333': {
-    dni: '11222333',
-    nombre: 'Administrador',
-    email: 'admin@prode.local',
-    passHash: null,  // Se calcula al iniciar
-    paid: false,
-    saved: false,
-    predictions: {},
-    rifas: 0,
-    isAdmin: true,
-    createdAt: new Date().toISOString()
-  }
-};
-
-// ===== MAPEO DE CONTRASEÑAS A HASH (para demostración) =====
-// Admin: DNI 11222333, Contraseña: 11222333
-const DEMO_PASSWORDS = {
-  '11222333': '11222333'  // Admin usa 11222333 / 11222333
-};
-
 // ===== PREMIOS =====
 const PRIZES = {
   prode: [

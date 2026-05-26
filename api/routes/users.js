@@ -1,4 +1,5 @@
 const express = require('express');
+const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 const { requireAuth, requireAdmin } = require('../middleware/auth');
 
@@ -15,13 +16,42 @@ router.get('/', requireAdmin, async (req, res) => {
 
 router.get('/:dni', requireAuth, async (req, res) => {
   try {
-    // Un usuario solo puede ver su propio perfil, el admin puede ver cualquiera
     if (!req.user.isAdmin && req.user.dni !== req.params.dni) {
       return res.status(403).json({ error: 'Sin permiso' });
     }
     const user = await User.findOne({ dni: req.params.dni }).select('-password');
     if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
     res.json(user);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.put('/:dni', requireAdmin, async (req, res) => {
+  try {
+    const { nombre, email, paid, password } = req.body;
+    const update = { nombre, email, paid, updatedAt: new Date() };
+    if (password) {
+      const salt = await bcrypt.genSalt(10);
+      update.password = await bcrypt.hash(password, salt);
+    }
+    const user = await User.findOneAndUpdate(
+      { dni: req.params.dni },
+      update,
+      { new: true }
+    ).select('-password');
+    if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.delete('/:dni', requireAdmin, async (req, res) => {
+  try {
+    const user = await User.findOneAndDelete({ dni: req.params.dni });
+    if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+    res.json({ message: 'Usuario eliminado' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -35,7 +65,7 @@ router.put('/:dni/predictions', requireAuth, async (req, res) => {
     const { predictions } = req.body;
     const user = await User.findOneAndUpdate(
       { dni: req.params.dni },
-      { predictions, updatedAt: new Date() },
+      { predictions, saved: true, updatedAt: new Date() },
       { new: true }
     ).select('-password');
     if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });

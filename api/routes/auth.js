@@ -1,6 +1,7 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const { requireAdmin } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -12,11 +13,11 @@ router.post('/login', async (req, res) => {
     }
     const user = await User.findOne({ dni });
     if (!user) {
-      return res.status(401).json({ error: 'Usuario no encontrado' });
+      return res.status(401).json({ error: 'DNI o contraseña incorrectos' });
     }
     const isValid = await user.comparePassword(password);
     if (!isValid) {
-      return res.status(401).json({ error: 'Contraseña incorrecta' });
+      return res.status(401).json({ error: 'DNI o contraseña incorrectos' });
     }
     const token = jwt.sign(
       { dni: user.dni, isAdmin: user.isAdmin },
@@ -38,7 +39,7 @@ router.post('/login', async (req, res) => {
   }
 });
 
-router.post('/register', async (req, res) => {
+router.post('/register', requireAdmin, async (req, res) => {
   try {
     const { dni, nombre, email, password, paid } = req.body;
     if (!dni || !nombre || !email || !password) {
@@ -48,20 +49,9 @@ router.post('/register', async (req, res) => {
     if (exists) {
       return res.status(400).json({ error: 'DNI ya existe' });
     }
-    const user = await User.create({
-      dni,
-      nombre,
-      email,
-      password,
-      paid: paid || false
-    });
+    const user = await User.create({ dni, nombre, email, password, paid: paid || false });
     res.status(201).json({
-      user: {
-        dni: user.dni,
-        nombre: user.nombre,
-        email: user.email,
-        paid: user.paid
-      }
+      user: { dni: user.dni, nombre: user.nombre, email: user.email, paid: user.paid }
     });
   } catch (error) {
     res.status(500).json({ error: error.message });

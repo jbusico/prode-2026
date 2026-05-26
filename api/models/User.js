@@ -9,6 +9,8 @@ const userSchema = new mongoose.Schema({
   paid: { type: Boolean, default: false },
   isAdmin: { type: Boolean, default: false },
   predictions: { type: Object, default: {} },
+  rifas: { type: Number, default: 0 },
+  saved: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 });
