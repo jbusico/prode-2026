@@ -378,6 +378,34 @@ async function syncMatchesFromESPN() {
   );
 }
 
+// ===== ADMIN: CORREGIR GRUPOS =====
+
+async function fixGroupsFromESPN() {
+  showConfirm(
+    '¿Asignar grupos a los partidos de Fase de Grupos usando los standings de ESPN? Solo afecta partidos sin grupo asignado.',
+    async () => {
+      showLoading('Asignando grupos desde ESPN...');
+      try {
+        const res  = await fetch('/api/matches/fix-groups', { method: 'POST' });
+        const data = await res.json();
+
+        if (!res.ok) throw new Error(data.error || 'Error en servidor');
+
+        await loadMatchesFromAPI();
+        hideLoading();
+        renderAdminResults();
+        renderProdeUI();
+        showToast(`✅ ${data.fixed} partidos actualizados (${data.teams} equipos en mapa)`, 'success');
+        logAudit('FIX_GROUPS', { fixed: data.fixed, total: data.total });
+      } catch (err) {
+        hideLoading();
+        showToast(`Error al asignar grupos: ${err.message}`, 'error');
+      }
+    },
+    false, 'Asignar Grupos'
+  );
+}
+
 // ===== ADMIN: PUNTAJES =====
 
 function renderAdminScores() {
