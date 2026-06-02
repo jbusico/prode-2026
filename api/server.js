@@ -62,7 +62,7 @@ async function seedPrizes() {
     const Prize = require('./models/Prize');
     const defined = [
       { category: 'prode', position: 1, name: 'Camiseta de la Selección Argentina', description: 'Camiseta oficial de la Selección Argentina' },
-      { category: 'prode', position: 99, name: '¡Y muchos premios más!',             description: '' },
+      { category: 'prode', position: 99, name: '¡y algunas sorpresitas más!',             description: '' },
     ];
     await Prize.deleteMany({});
     await Prize.insertMany(defined);
