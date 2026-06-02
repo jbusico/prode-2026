@@ -547,7 +547,7 @@ async function renderPrizes() {
     const card = document.createElement('div');
     if (prize.position === 99) {
       card.className = 'prize-card prize-card--more';
-      card.innerHTML = `<div class="prize-info"><div class="prize-title prize-more-text">${escapeHTML(prize.name)}</div></div>`;
+      card.innerHTML = `<div class="prize-more-icon">🎁</div><div class="prize-more-text">${escapeHTML(prize.name)}</div>`;
       return card;
     }
     card.className = 'prize-card';
