@@ -376,6 +376,29 @@ async function saveResults() {
   }
 }
 
+async function clearResults() {
+  showConfirm(
+    '¿Borrar TODOS los resultados cargados? Esta acción no se puede deshacer.',
+    async () => {
+      showLoading('Borrando resultados...');
+      try {
+        const currentResults = await apiCall('GET', '/api/results');
+        await apiCall('PUT', '/api/results', { results: {}, overrides: currentResults.overrides || {} });
+        latestResults.results = {};
+        logAudit('CLEAR_RESULTS', {});
+        hideLoading();
+        renderAdminResults();
+        await renderRanking();
+        showToast('✅ Resultados borrados correctamente', 'success');
+      } catch (error) {
+        hideLoading();
+        showToast('Error al borrar resultados', 'error');
+      }
+    },
+    true, 'Borrar Resultados'
+  );
+}
+
 // ===== ADMIN: SINCRONIZAR PARTIDOS DESDE ESPN =====
 
 async function syncMatchesFromESPN() {

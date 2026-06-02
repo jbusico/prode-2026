@@ -226,7 +226,10 @@
       <div class="results-form" id="results-form">
         <!-- Se genera con JavaScript -->
       </div>
-      <button class="btn-primary" onclick="saveResultsWithLoader()" style="margin-top:16px;">Guardar Resultados</button>
+      <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:16px;">
+        <button class="btn-primary" onclick="saveResultsWithLoader()">Guardar Resultados</button>
+        <button class="btn-danger" onclick="clearResults()">🗑️ Borrar Todos los Resultados</button>
+      </div>
     </div>
 
     <!-- TAB: AUDITORÍA -->
@@ -342,7 +345,7 @@
           </div>
         </div>
         <div class="credit-item">
-          <span class="credit-icon">🔭</span>
+          <span class="credit-icon">📈</span>
           <div class="credit-text">
             <strong>Docente de Vinculación con el Futuro</strong>
             <span>Jorge Cossettini</span>
