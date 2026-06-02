@@ -283,6 +283,7 @@ function switchAdminResultsPhase(phase) {
 function buildResultCard(match, res) {
   const id   = match._id;
   const r    = res || { home: '', away: '' };
+  const hasResult = r.home !== '' && r.away !== '';
   const card = document.createElement('div');
   card.className = 'result-card';
   card.innerHTML = `
@@ -296,8 +297,43 @@ function buildResultCard(match, res) {
       <div style="color:var(--text-light); font-weight:700;">–</div>
       <input type="number" class="result-input" min="0" max="20"
         value="${r.away}" id="res-away-${id}" placeholder="0">
+      <button
+        id="clear-btn-${id}"
+        onclick="clearMatchResult('${id}')"
+        title="Borrar resultado"
+        style="
+          background:none; border:1.5px solid var(--gris-medio); border-radius:6px;
+          color:var(--text-light); cursor:pointer; font-size:14px; padding:6px 9px;
+          transition:all 0.2s; flex-shrink:0;
+          ${hasResult ? '' : 'opacity:0.3; pointer-events:none;'}
+        ">✕</button>
     </div>`;
   return card;
+}
+
+async function clearMatchResult(matchId) {
+  const homeEl = document.getElementById(`res-home-${matchId}`);
+  const awayEl = document.getElementById(`res-away-${matchId}`);
+  if (!homeEl || !awayEl) return;
+
+  homeEl.value = '';
+  awayEl.value = '';
+
+  const btn = document.getElementById(`clear-btn-${matchId}`);
+  if (btn) { btn.style.opacity = '0.3'; btn.style.pointerEvents = 'none'; }
+
+  showLoading('Borrando resultado...');
+  try {
+    const success = await saveResults();
+    hideLoading();
+    if (success) {
+      await renderRanking();
+      showToast('Resultado borrado', 'success');
+    }
+  } catch (error) {
+    hideLoading();
+    showToast('Error al borrar resultado', 'error');
+  }
 }
 
 async function saveResultsWithLoader() {

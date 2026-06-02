@@ -736,6 +736,7 @@ button { font-family: 'Barlow', sans-serif; }
   color: var(--text) !important;
 }
 .result-input:focus { border-color: var(--rojo); outline: none; box-shadow: 0 0 0 3px rgba(224, 90, 110, 0.15); }
+.result-inputs button:not([style*="pointer-events:none"]):hover { border-color: var(--error) !important; color: var(--error) !important; background: rgba(239,68,68,0.08) !important; }
 
 .logs-container {
   background: var(--card);
