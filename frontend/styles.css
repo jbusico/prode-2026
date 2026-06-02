@@ -643,14 +643,20 @@ button { font-family: 'Barlow', sans-serif; }
 .admin-tab { display: none; animation: fadeIn 0.3s ease-out; }
 .admin-tab.active { display: block; }
 
+.admin-table-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  margin-bottom: 20px;
+}
+
 .admin-table {
   width: 100%;
   border-collapse: collapse;
   background: var(--card);
   border-radius: 12px;
   overflow: hidden;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-  margin-bottom: 20px;
 }
 
 .admin-table thead { background: #0d1a36; }
@@ -802,13 +808,19 @@ button { font-family: 'Barlow', sans-serif; }
 
 /* ===== RESPONSIVE ===== */
 @media (max-width: 1024px) {
+  .navbar { height: 58px; }
+  .hero-banner { padding: 50px 30px; }
+  .hero-content h1 { font-size: 54px; }
   .page-content { padding: 32px 20px; }
+  .page-content > h1 { font-size: 42px; }
   .matches-container { grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); }
   .top-three { gap: 12px; }
   .rank-card { min-width: 120px; padding: 16px 12px; }
   .rank-1st { min-height: 240px; }
   .rank-2nd { min-height: 200px; }
   .rank-3rd { min-height: 180px; }
+  .ranking-table { font-size: 13px; }
+  .ranking-table th, .ranking-table td { padding: 10px 12px; }
 }
 
 @media (max-width: 768px) {
@@ -843,12 +855,16 @@ button { font-family: 'Barlow', sans-serif; }
   .results-phase-section { grid-template-columns: 1fr; }
   .ranking-table { font-size: 12px; }
   .ranking-table th, .ranking-table td { padding: 8px 10px; }
-  .modal-content { width: 95%; max-width: none; border-radius: 12px; }
+  .modal-content { width: 95%; max-width: 600px; border-radius: 12px; }
   .modal-header h2 { font-size: 20px; }
   .modal-body { padding: 16px; }
   .modal-footer { padding: 16px; flex-direction: column; }
   .modal-footer button { width: 100%; }
   .form-group input, .form-group textarea { font-size: 16px; }
+  .matches-container { gap: 12px; }
+  .logs-container { max-height: 300px; }
+  .info-detail-card { padding: 20px; }
+  .info-detail-card h2 { font-size: 24px; }
 }
 
 @media (max-width: 480px) {
@@ -868,6 +884,14 @@ button { font-family: 'Barlow', sans-serif; }
   .match-team { font-size: 13px; }
   .ranking-table { font-size: 11px; }
   .ranking-table th, .ranking-table td { padding: 6px 8px; }
+  .nav-logo { font-size: 16px; }
+  .matches-container { gap: 8px; }
+  .match-venue { max-width: 100px; }
+  .prizes-grid { grid-template-columns: 1fr; }
+  .prize-image { height: 150px; }
+  .info-icon { font-size: 36px; }
+  .info-detail-card { padding: 14px; }
+  .admin-tab-btn { padding: 8px 10px; font-size: 11px; }
   .toast { max-width: calc(100vw - 40px); }
   .toast-container { left: 20px; right: 20px; max-width: none; }
 }
@@ -1079,6 +1103,11 @@ button { font-family: 'Barlow', sans-serif; }
   font-size: 15px;
   color: var(--text);
   font-weight: 600;
+}
+
+@media (max-width: 1024px) {
+  .info-hero-banner { padding: 50px 30px; }
+  .info-hero-content h1 { font-size: 54px; }
 }
 
 @media (max-width: 768px) {
