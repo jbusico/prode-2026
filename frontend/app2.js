@@ -206,9 +206,12 @@ async function renderAdminResults() {
   form.innerHTML = '<div class="empty-matches" style="margin:20px 0;"><p>Cargando resultados...</p></div>';
 
   let results = {};
+  let locked = {};
   try {
     const data = await apiCall('GET', '/api/results');
     results = data.results || {};
+    locked = data.locked || {};
+    latestResults.locked = locked;
   } catch (e) {
     form.innerHTML = '<div class="empty-matches" style="margin:20px 0;"><p>Error al cargar resultados.</p></div>';
     return;
@@ -267,7 +270,7 @@ async function renderAdminResults() {
 
     gMatches
       .sort((a, b) => new Date(a.date) - new Date(b.date))
-      .forEach(m => form.appendChild(buildResultCard(m, results[m._id])));
+      .forEach(m => form.appendChild(buildResultCard(m, results[m._id], locked[m._id])));
   });
 }
 
@@ -280,11 +283,12 @@ function switchAdminResultsPhase(phase) {
   });
 }
 
-function buildResultCard(match, res) {
+function buildResultCard(match, res, isLocked) {
   const id   = match._id;
   const r    = res || { home: '', away: '' };
+  const locked = !!isLocked;
   const card = document.createElement('div');
-  card.className = 'result-card';
+  card.className = 'result-card' + (locked ? ' result-card--locked' : '');
   card.innerHTML = `
     <div class="result-teams">
       <strong>${escapeHTML(match.homeTeam)} vs ${escapeHTML(match.awayTeam)}</strong>
@@ -292,20 +296,62 @@ function buildResultCard(match, res) {
     </div>
     <div class="result-inputs">
       <input type="number" class="result-input" min="0" max="20"
-        value="${r.home}" id="res-home-${id}" placeholder="0">
+        value="${r.home}" id="res-home-${id}" placeholder="0"${locked ? ' disabled' : ''}>
       <div style="color:var(--text-light); font-weight:700;">–</div>
       <input type="number" class="result-input" min="0" max="20"
-        value="${r.away}" id="res-away-${id}" placeholder="0">
+        value="${r.away}" id="res-away-${id}" placeholder="0"${locked ? ' disabled' : ''}>
+      <button
+        id="lock-btn-${id}"
+        onclick="toggleMatchLock('${id}')"
+        title="${locked ? 'Desbloquear partido' : 'Bloquear partido'}"
+        class="lock-result-btn${locked ? ' locked' : ''}">
+        ${locked ? '🔒' : '🔓'}
+      </button>
       <button
         id="clear-btn-${id}"
         onclick="clearMatchResult('${id}')"
         title="Borrar resultado"
-        class="clear-result-btn">✕</button>
+        class="clear-result-btn"${locked ? ' disabled' : ''}>✕</button>
     </div>`;
   return card;
 }
 
+async function toggleMatchLock(matchId) {
+  const isCurrentlyLocked = !!((latestResults.locked || {})[matchId]);
+  const newLocked = !isCurrentlyLocked;
+  try {
+    await apiCall('PUT', `/api/results/lock/${matchId}`, { locked: newLocked });
+    if (!latestResults.locked) latestResults.locked = {};
+    if (newLocked) {
+      latestResults.locked[matchId] = true;
+    } else {
+      delete latestResults.locked[matchId];
+    }
+    const lockBtn   = document.getElementById(`lock-btn-${matchId}`);
+    const homeInput = document.getElementById(`res-home-${matchId}`);
+    const awayInput = document.getElementById(`res-away-${matchId}`);
+    const clearBtn  = document.getElementById(`clear-btn-${matchId}`);
+    const card      = lockBtn ? lockBtn.closest('.result-card') : null;
+    if (lockBtn) {
+      lockBtn.textContent = newLocked ? '🔒' : '🔓';
+      lockBtn.title = newLocked ? 'Desbloquear partido' : 'Bloquear partido';
+      lockBtn.classList.toggle('locked', newLocked);
+    }
+    if (homeInput) homeInput.disabled = newLocked;
+    if (awayInput) awayInput.disabled = newLocked;
+    if (clearBtn)  clearBtn.disabled  = newLocked;
+    if (card)      card.classList.toggle('result-card--locked', newLocked);
+    showToast(newLocked ? '🔒 Partido bloqueado' : '🔓 Partido desbloqueado', 'success');
+  } catch (error) {
+    showToast('Error al cambiar el bloqueo', 'error');
+  }
+}
+
 async function clearMatchResult(matchId) {
+  if ((latestResults.locked || {})[matchId]) {
+    showToast('El partido está bloqueado', 'error');
+    return;
+  }
   const homeEl = document.getElementById(`res-home-${matchId}`);
   const awayEl = document.getElementById(`res-away-${matchId}`);
   if (!homeEl || !awayEl) return;
@@ -352,6 +398,12 @@ async function saveResults() {
 
     for (const match of groupMatches) {
       const id     = match._id;
+
+      if ((latestResults.locked || {})[id]) {
+        results[id] = latestResults.results[id] || { home: '', away: '' };
+        continue;
+      }
+
       const homeEl = document.getElementById(`res-home-${id}`);
       const awayEl = document.getElementById(`res-away-${id}`);
       if (!homeEl || !awayEl) continue;

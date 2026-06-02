@@ -173,7 +173,7 @@ function doLogout() {
       logAudit('LOGOUT', { dni: currentUser });
       currentUser = null;
       users = {};
-      latestResults = { results: {}, overrides: {} };
+      latestResults = { results: {}, overrides: {}, locked: {} };
       localStorage.removeItem('prode_token');
       localStorage.removeItem('prode_user');
       showPage('page-login');
@@ -457,7 +457,7 @@ async function renderRanking() {
       apiCall('GET', '/api/results')
     ]);
 
-    latestResults = { results: resultsData.results || {}, overrides: resultsData.overrides || {} };
+    latestResults = { results: resultsData.results || {}, overrides: resultsData.overrides || {}, locked: resultsData.locked || {} };
     rankingUsers.forEach(u => { users[u.dni] = u; });
 
     const { results, overrides } = latestResults;

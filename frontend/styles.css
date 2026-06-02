@@ -748,6 +748,25 @@ button { font-family: 'Barlow', sans-serif; }
   transition: border-color 0.2s, color 0.2s, background 0.2s;
 }
 .clear-result-btn:hover { border-color: var(--error); color: var(--error); background: rgba(239,68,68,0.08); }
+.clear-result-btn:disabled { opacity: 0.35; cursor: not-allowed; pointer-events: none; }
+
+.lock-result-btn {
+  background: none;
+  border: 1.5px solid var(--gris-medio);
+  border-radius: 6px;
+  color: var(--text-light);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 6px 9px;
+  flex-shrink: 0;
+  transition: border-color 0.2s, color 0.2s, background 0.2s;
+}
+.lock-result-btn:hover { border-color: var(--warning); color: var(--warning); background: rgba(245,158,11,0.08); }
+.lock-result-btn.locked { border-color: var(--rojo); color: var(--rojo); }
+.lock-result-btn.locked:hover { background: rgba(224,90,110,0.08); }
+
+.result-card--locked { border-color: var(--rojo) !important; }
+.result-card--locked .result-input:disabled { opacity: 0.45; cursor: not-allowed; }
 
 .logs-container {
   background: var(--card);
