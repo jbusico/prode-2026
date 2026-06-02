@@ -589,6 +589,14 @@ button { font-family: 'Barlow', sans-serif; }
 .info-icon { font-size: 48px; margin-bottom: 16px; }
 .info-card h3 { color: var(--azul); font-size: 18px; font-weight: 700; margin-bottom: 8px; }
 .info-card p { color: var(--text-light); font-size: 14px; }
+.highlight-alias { color: var(--rojo); font-style: italic; }
+
+.participation-notes { display: flex; flex-direction: column; gap: 16px; margin-top: 32px; }
+.participation-alias { display: flex; align-items: center; justify-content: center; gap: 16px; background: var(--card); padding: 16px 24px; border-radius: 12px; border: 1px solid var(--rojo); flex-wrap: wrap; }
+.participation-alias-label { font-weight: 700; color: var(--text); font-size: 15px; }
+.participation-alias-value { font-size: 22px; font-weight: 700; }
+.participation-link { text-align: center; color: var(--text-light); font-size: 14px; margin: 0; }
+.participation-warning { background: var(--card-alt); border-left: 4px solid var(--rojo); padding: 14px 20px; border-radius: 8px; color: var(--text-light); font-size: 14px; line-height: 1.6; }
 
 /* ===== RANKING SECTION ===== */
 .ranking-section { margin-bottom: 48px; }
