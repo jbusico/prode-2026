@@ -529,9 +529,7 @@ async function renderRanking() {
 
 async function renderPrizes() {
   const gridProde = document.getElementById('prizes-grid-prode');
-  const gridRifa  = document.getElementById('prizes-grid-rifa');
   gridProde.innerHTML = '<p style="color:var(--text-light)">Cargando...</p>';
-  gridRifa.innerHTML  = '';
 
   let prizes;
   try {
@@ -562,9 +560,7 @@ async function renderPrizes() {
   }
 
   gridProde.innerHTML = '';
-  gridRifa.innerHTML  = '';
   prizes.filter(p => p.category === 'prode').forEach(p => gridProde.appendChild(buildCard(p)));
-  prizes.filter(p => p.category === 'rifa').forEach(p => gridRifa.appendChild(buildCard(p)));
 }
 
 function openViewPredictions(dni) {

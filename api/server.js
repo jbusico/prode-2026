@@ -63,7 +63,6 @@ async function seedPrizes() {
     const defined = [
       { category: 'prode', position: 1, name: 'Camiseta de la Selección Argentina', description: 'Camiseta oficial de la Selección Argentina' },
       { category: 'prode', position: 99, name: '¡Y muchos premios más!',             description: '' },
-      { category: 'rifa',  position: 99, name: '¡Y muchos premios más!',             description: '' },
     ];
     await Prize.deleteMany({});
     await Prize.insertMany(defined);
