@@ -1,6 +1,7 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const User = require('../models/User');
+const Results = require('../models/Results');
 const { requireAuth, requireAdmin } = require('../middleware/auth');
 
 const router = express.Router();
@@ -61,6 +62,12 @@ router.put('/:dni/predictions', requireAuth, async (req, res) => {
   try {
     if (!req.user.isAdmin && req.user.dni !== req.params.dni) {
       return res.status(403).json({ error: 'Sin permiso' });
+    }
+    if (!req.user.isAdmin) {
+      const resultsDoc = await Results.findOne({ key: 'global' });
+      if (resultsDoc && resultsDoc.predictionsClosed) {
+        return res.status(403).json({ error: 'La carga de pronósticos está cerrada' });
+      }
     }
     const { predictions } = req.body;
     const user = await User.findOneAndUpdate(

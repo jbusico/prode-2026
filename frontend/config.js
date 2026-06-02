@@ -31,6 +31,6 @@ let currentUser = null;
 let loginAttempts = {};  // {dni: {count: N, timestamp: ...}}
 let auditLog = [];
 let currentAdminTab = 'users';
-let latestResults = { results: {}, overrides: {}, locked: {} };
+let latestResults = { results: {}, overrides: {}, locked: {}, predictionsClosed: false };
 
 console.log('✅ Config.js cargado');

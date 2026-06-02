@@ -13,6 +13,20 @@ router.get('/', requireAuth, async (req, res) => {
   }
 });
 
+router.put('/predictions-closed', requireAdmin, async (req, res) => {
+  try {
+    const { closed } = req.body;
+    const data = await Results.findOneAndUpdate(
+      { key: 'global' },
+      { predictionsClosed: !!closed, updatedAt: new Date() },
+      { new: true, upsert: true }
+    );
+    res.json({ predictionsClosed: data.predictionsClosed });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 router.put('/lock/:matchId', requireAdmin, async (req, res) => {
   try {
     const { matchId } = req.params;

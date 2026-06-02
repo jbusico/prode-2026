@@ -212,6 +212,8 @@ async function renderAdminResults() {
     results = data.results || {};
     locked = data.locked || {};
     latestResults.locked = locked;
+    latestResults.predictionsClosed = !!data.predictionsClosed;
+    updatePredictionsToggleBtn();
   } catch (e) {
     form.innerHTML = '<div class="empty-matches" style="margin:20px 0;"><p>Error al cargar resultados.</p></div>';
     return;
@@ -480,6 +482,49 @@ async function clearResults() {
     },
     true, 'Borrar Resultados'
   );
+}
+
+// ===== ADMIN: CERRAR/ABRIR PRONÓSTICOS =====
+
+async function togglePredictionsClosed() {
+  const newClosed = !latestResults.predictionsClosed;
+  const action = newClosed ? 'cerrar' : 'abrir';
+  showConfirm(
+    `¿Querés ${action} la carga de pronósticos para todos los usuarios?`,
+    async () => {
+      try {
+        showLoading(newClosed ? 'Cerrando pronósticos...' : 'Abriendo pronósticos...');
+        await apiCall('PUT', '/api/results/predictions-closed', { closed: newClosed });
+        latestResults.predictionsClosed = newClosed;
+        hideLoading();
+        updatePredictionsToggleBtn();
+        applyPredictionsClosedUI();
+        logAudit(newClosed ? 'CLOSE_PREDICTIONS' : 'OPEN_PREDICTIONS', {});
+        showToast(newClosed ? '🔒 Pronósticos cerrados para todos' : '🔓 Pronósticos abiertos para todos', 'success');
+      } catch (error) {
+        hideLoading();
+        showToast('Error al cambiar el estado de pronósticos', 'error');
+      }
+    },
+    false,
+    newClosed ? 'Cerrar Pronósticos' : 'Abrir Pronósticos'
+  );
+}
+
+function updatePredictionsToggleBtn() {
+  const btn        = document.getElementById('predictions-toggle-btn');
+  const statusText = document.getElementById('predictions-status-text');
+  const closed     = !!latestResults.predictionsClosed;
+  if (btn) {
+    btn.textContent = closed ? '🔓 Abrir Pronósticos' : '🔒 Cerrar Pronósticos';
+    btn.className   = closed ? 'btn-success predictions-toggle-btn' : 'btn-danger predictions-toggle-btn';
+  }
+  if (statusText) {
+    statusText.textContent = closed
+      ? 'Estado: 🔒 Cerrado — los usuarios no pueden cargar pronósticos'
+      : 'Estado: 🔓 Abierto — los usuarios pueden cargar pronósticos';
+    statusText.style.color = closed ? 'var(--error)' : 'var(--success)';
+  }
 }
 
 // ===== ADMIN: SINCRONIZAR PARTIDOS DESDE ESPN =====

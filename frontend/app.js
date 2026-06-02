@@ -173,7 +173,7 @@ function doLogout() {
       logAudit('LOGOUT', { dni: currentUser });
       currentUser = null;
       users = {};
-      latestResults = { results: {}, overrides: {}, locked: {} };
+      latestResults = { results: {}, overrides: {}, locked: {}, predictionsClosed: false };
       localStorage.removeItem('prode_token');
       localStorage.removeItem('prode_user');
       showPage('page-login');
@@ -331,6 +331,28 @@ function createMatchCard(match, pred) {
 
 // ===== GUARDAR PRONÓSTICOS =====
 
+function applyPredictionsClosedUI() {
+  const closed  = !!latestResults.predictionsClosed;
+  const banner  = document.getElementById('predictions-closed-banner');
+  const saveBtn = document.getElementById('prode-save-btn');
+
+  if (banner)  banner.style.display = closed ? '' : 'none';
+  if (saveBtn) saveBtn.disabled = closed;
+
+  document.querySelectorAll('#matches-container .match-input').forEach(input => {
+    if (input.title === 'Partido finalizado') return;
+    input.disabled = closed;
+    if (closed) {
+      input.removeAttribute('oninput');
+    } else {
+      input.setAttribute('oninput', 'markProdeUnsaved()');
+    }
+  });
+
+  const champSelect = document.getElementById('champion-select');
+  if (champSelect) champSelect.disabled = closed;
+}
+
 async function saveProdeWithLoader() {
   showLoading('Guardando pronósticos...');
   try {
@@ -347,6 +369,10 @@ async function saveProdeWithLoader() {
 }
 
 async function saveProde() {
+  if (latestResults.predictionsClosed) {
+    showToast('La carga de pronósticos está cerrada', 'error');
+    return false;
+  }
   try {
     const predictions = {};
     const errors      = [];
@@ -457,8 +483,9 @@ async function renderRanking() {
       apiCall('GET', '/api/results')
     ]);
 
-    latestResults = { results: resultsData.results || {}, overrides: resultsData.overrides || {}, locked: resultsData.locked || {} };
+    latestResults = { results: resultsData.results || {}, overrides: resultsData.overrides || {}, locked: resultsData.locked || {}, predictionsClosed: !!resultsData.predictionsClosed };
     rankingUsers.forEach(u => { users[u.dni] = u; });
+    applyPredictionsClosedUI();
 
     const { results, overrides } = latestResults;
     const rankings = [];

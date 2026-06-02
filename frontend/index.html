@@ -125,12 +125,16 @@
       </div>
     </div>
 
+    <div id="predictions-closed-banner" class="predictions-closed-banner" style="display:none;">
+      🔒 La carga de pronósticos está cerrada. Ya no se pueden modificar los pronósticos.
+    </div>
+
     <div class="matches-container" id="matches-container">
       <!-- Se genera con JavaScript -->
     </div>
 
     <div class="prode-actions">
-      <button class="btn-primary" onclick="saveProdeWithLoader()">💾 Guardar Pronósticos</button>
+      <button class="btn-primary" id="prode-save-btn" onclick="saveProdeWithLoader()">💾 Guardar Pronósticos</button>
     </div>
   </div>
 </div>
@@ -222,6 +226,10 @@
           <button class="btn-secondary" onclick="syncMatchesFromESPN()">🔄 Sincronizar Partidos desde ESPN</button>
           <button class="btn-secondary" onclick="fixGroupsFromESPN()">🗂️ Corregir Grupos</button>
         </div>
+      </div>
+      <div class="predictions-status-bar">
+        <span id="predictions-status-text">Estado de pronósticos: cargando...</span>
+        <button id="predictions-toggle-btn" class="btn-danger predictions-toggle-btn" onclick="togglePredictionsClosed()">🔒 Cerrar Pronósticos</button>
       </div>
       <div class="results-form" id="results-form">
         <!-- Se genera con JavaScript -->
