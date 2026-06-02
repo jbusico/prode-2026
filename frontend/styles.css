@@ -606,6 +606,8 @@ button { font-family: 'Barlow', sans-serif; }
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 .prize-card:hover { transform: translateY(-8px); box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5); }
+.prize-card--more { grid-column: 1 / -1; display: flex; align-items: center; justify-content: center; padding: 24px; border-style: dashed; }
+.prize-more-text { font-size: 20px; font-family: 'Bebas Neue', sans-serif; letter-spacing: 1px; color: var(--text-light); }
 
 .prize-image { width: 100%; height: 200px; object-fit: cover; display: block; }
 .prize-info { padding: 16px; text-align: center; }
@@ -1297,4 +1299,65 @@ button { font-family: 'Barlow', sans-serif; }
   .phase-title { font-size: 20px; }
   .group-header { padding: 5px 10px; }
   .group-title { font-size: 12px; }
+}
+
+/* ===== SECCIÓN CAMPEÓN ===== */
+.champion-section {
+  background: var(--card);
+  border-radius: 12px;
+  padding: 28px 24px;
+  margin-top: 32px;
+  border: 2px solid var(--gold);
+  text-align: center;
+}
+
+.champion-header h3 {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 24px;
+  letter-spacing: 2px;
+  color: var(--gold);
+  margin-bottom: 4px;
+}
+
+.champion-subtitle {
+  color: var(--text-light);
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+
+.champion-select {
+  width: 100%;
+  max-width: 320px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 15px;
+  border: 1px solid var(--gris-medio);
+  cursor: pointer;
+}
+
+/* Campeón en panel admin */
+.champion-admin-section {
+  background: var(--card);
+  border-radius: 10px;
+  padding: 14px 18px;
+  margin-bottom: 24px;
+  border: 2px solid var(--gold);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.champion-admin-section h4 {
+  color: var(--gold);
+  font-size: 15px;
+  font-weight: 700;
+  white-space: nowrap;
+  margin: 0;
+}
+
+@media (max-width: 480px) {
+  .champion-section { padding: 20px 16px; }
+  .champion-select { max-width: 100%; }
+  .champion-admin-section { flex-direction: column; align-items: flex-start; }
 }

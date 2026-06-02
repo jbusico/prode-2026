@@ -224,64 +224,50 @@ async function renderAdminResults() {
     return;
   }
 
-  const byPhase = {};
-  MATCHES.forEach(m => {
-    if (!byPhase[m.phase]) byPhase[m.phase] = [];
-    byPhase[m.phase].push(m);
+  const groupMatches = MATCHES.filter(m => m.phase === 'Fase de Grupos');
+
+  if (groupMatches.length === 0) {
+    form.innerHTML = `
+      <div class="empty-matches" style="margin:20px 0;">
+        <p>No hay partidos de Fase de Grupos cargados.</p>
+      </div>`;
+    return;
+  }
+
+  // Sección Campeón al tope
+  const allTeams = [...new Set(groupMatches.flatMap(m => [m.homeTeam, m.awayTeam]))].sort();
+  const currentChampion = results.champion || '';
+
+  const champDiv = document.createElement('div');
+  champDiv.className = 'champion-admin-section';
+  champDiv.innerHTML = `
+    <h4>🏆 Campeón del Mundial</h4>
+    <select id="admin-champion-select" class="champion-select">
+      <option value="">-- Sin resultado --</option>
+      ${allTeams.map(t => `<option value="${escapeHTML(t)}"${t === currentChampion ? ' selected' : ''}>${escapeHTML(t)}</option>`).join('')}
+    </select>`;
+  form.appendChild(champDiv);
+
+  // Partidos de Fase de Grupos
+  const byGroup = {};
+  groupMatches.forEach(m => {
+    const g = m.group || '?';
+    if (!byGroup[g]) byGroup[g] = [];
+    byGroup[g].push(m);
   });
 
-  const availablePhases = PHASE_ORDER.filter(p => byPhase[p]?.length > 0);
-  if (availablePhases.length === 0) return;
+  [...GROUP_ORDER, '?'].forEach(gl => {
+    const gMatches = byGroup[gl];
+    if (!gMatches || gMatches.length === 0) return;
 
-  // Tab bar
-  const tabBar = document.createElement('div');
-  tabBar.className = 'phase-tabs';
-  availablePhases.forEach((phase, i) => {
-    const btn = document.createElement('button');
-    btn.className = 'phase-tab-btn' + (i === 0 ? ' active' : '');
-    btn.textContent = phase;
-    btn.dataset.phase = phase;
-    btn.onclick = () => switchAdminResultsPhase(phase);
-    tabBar.appendChild(btn);
-  });
-  form.appendChild(tabBar);
+    const groupLabel = document.createElement('div');
+    groupLabel.className = 'group-label-admin';
+    groupLabel.textContent = gl !== '?' ? `Grupo ${gl}` : 'Sin grupo asignado';
+    form.appendChild(groupLabel);
 
-  // Phase sections
-  availablePhases.forEach((phase, i) => {
-    const phaseMatches = byPhase[phase];
-    const section = document.createElement('div');
-    section.className = 'results-phase-section';
-    section.dataset.phase = phase;
-    if (i !== 0) section.style.display = 'none';
-
-    if (phase === 'Fase de Grupos') {
-      const byGroup = {};
-      phaseMatches.forEach(m => {
-        const g = m.group || '?';
-        if (!byGroup[g]) byGroup[g] = [];
-        byGroup[g].push(m);
-      });
-
-      [...GROUP_ORDER, '?'].forEach(gl => {
-        const gMatches = byGroup[gl];
-        if (!gMatches || gMatches.length === 0) return;
-
-        const groupLabel = document.createElement('div');
-        groupLabel.className = 'group-label-admin';
-        groupLabel.textContent = gl !== '?' ? `Grupo ${gl}` : 'Sin grupo asignado';
-        section.appendChild(groupLabel);
-
-        gMatches
-          .sort((a, b) => new Date(a.date) - new Date(b.date))
-          .forEach(m => section.appendChild(buildResultCard(m, results[m._id])));
-      });
-    } else {
-      phaseMatches
-        .sort((a, b) => new Date(a.date) - new Date(b.date))
-        .forEach(m => section.appendChild(buildResultCard(m, results[m._id])));
-    }
-
-    form.appendChild(section);
+    gMatches
+      .sort((a, b) => new Date(a.date) - new Date(b.date))
+      .forEach(m => form.appendChild(buildResultCard(m, results[m._id])));
   });
 }
 
@@ -331,7 +317,9 @@ async function saveResults() {
     const results = {};
     const errors  = [];
 
-    for (const match of MATCHES) {
+    const groupMatches = MATCHES.filter(m => m.phase === 'Fase de Grupos');
+
+    for (const match of groupMatches) {
       const id     = match._id;
       const homeEl = document.getElementById(`res-home-${id}`);
       const awayEl = document.getElementById(`res-away-${id}`);
@@ -371,10 +359,13 @@ async function saveResults() {
       return false;
     }
 
+    const champSelect = document.getElementById('admin-champion-select');
+    results.champion = champSelect ? champSelect.value : '';
+
     await apiCall('PUT', '/api/results', { results, overrides: latestResults.overrides });
     latestResults.results = results;
     logAudit('SAVE_RESULTS', {
-      cantidad: Object.keys(results).filter(k => results[k].home !== '').length
+      cantidad: Object.keys(results).filter(k => k !== 'champion' && results[k].home !== '').length
     });
     showToast('✅ Resultados guardados correctamente', 'success');
     return true;

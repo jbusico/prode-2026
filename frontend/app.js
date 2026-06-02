@@ -223,86 +223,72 @@ function renderProdeUI() {
     return;
   }
 
-  const byPhase = {};
-  MATCHES.forEach(m => {
-    if (!byPhase[m.phase]) byPhase[m.phase] = [];
-    byPhase[m.phase].push(m);
+  const groupMatches = MATCHES.filter(m => m.phase === 'Fase de Grupos');
+
+  if (groupMatches.length === 0) {
+    container.innerHTML = `
+      <div class="empty-matches">
+        <p>No hay partidos de Fase de Grupos cargados aún.</p>
+      </div>`;
+    return;
+  }
+
+  const byGroup = {};
+  groupMatches.forEach(m => {
+    const g = m.group || '?';
+    if (!byGroup[g]) byGroup[g] = [];
+    byGroup[g].push(m);
   });
 
-  const availablePhases = PHASE_ORDER.filter(p => byPhase[p]?.length > 0);
-  if (availablePhases.length === 0) return;
+  GROUP_ORDER.forEach(gl => {
+    const gMatches = byGroup[gl];
+    if (!gMatches || gMatches.length === 0) return;
 
-  // Tab bar
-  const tabBar = document.createElement('div');
-  tabBar.className = 'phase-tabs';
-  availablePhases.forEach((phase, i) => {
-    const btn = document.createElement('button');
-    btn.className = 'phase-tab-btn' + (i === 0 ? ' active' : '');
-    btn.textContent = phase;
-    btn.dataset.phase = phase;
-    btn.onclick = () => switchProdePhase(phase);
-    tabBar.appendChild(btn);
-  });
-  container.appendChild(tabBar);
+    const groupSection = document.createElement('div');
+    groupSection.className = 'group-section';
 
-  // Phase sections
-  availablePhases.forEach((phase, i) => {
-    const phaseMatches = byPhase[phase];
-    const phaseSection = document.createElement('div');
-    phaseSection.className = 'phase-section';
-    phaseSection.dataset.phase = phase;
-    if (i !== 0) phaseSection.style.display = 'none';
+    const groupHeader = document.createElement('div');
+    groupHeader.className = 'group-header';
+    groupHeader.innerHTML = `<h3 class="group-title">Grupo ${gl}</h3>`;
+    groupSection.appendChild(groupHeader);
 
-    if (phase === 'Fase de Grupos') {
-      const byGroup = {};
-      phaseMatches.forEach(m => {
-        const g = m.group || '?';
-        if (!byGroup[g]) byGroup[g] = [];
-        byGroup[g].push(m);
+    gMatches
+      .sort((a, b) => new Date(a.date) - new Date(b.date))
+      .forEach(m => {
+        groupSection.appendChild(createMatchCard(m, preds[m._id] || { home: '', away: '' }));
       });
 
-      GROUP_ORDER.forEach(gl => {
-        const gMatches = byGroup[gl];
-        if (!gMatches || gMatches.length === 0) return;
-
-        const groupSection = document.createElement('div');
-        groupSection.className = 'group-section';
-
-        const groupHeader = document.createElement('div');
-        groupHeader.className = 'group-header';
-        groupHeader.innerHTML = `<h3 class="group-title">Grupo ${gl}</h3>`;
-        groupSection.appendChild(groupHeader);
-
-        gMatches
-          .sort((a, b) => new Date(a.date) - new Date(b.date))
-          .forEach(m => {
-            groupSection.appendChild(createMatchCard(m, preds[m._id] || { home: '', away: '' }));
-          });
-
-        phaseSection.appendChild(groupSection);
-      });
-
-      if (byGroup['?']?.length) {
-        const noGroup = document.createElement('div');
-        noGroup.className = 'group-section';
-        noGroup.innerHTML = '<div class="group-header"><h3 class="group-title">Sin grupo asignado</h3></div>';
-        byGroup['?']
-          .sort((a, b) => new Date(a.date) - new Date(b.date))
-          .forEach(m => {
-            noGroup.appendChild(createMatchCard(m, preds[m._id] || { home: '', away: '' }));
-          });
-        phaseSection.appendChild(noGroup);
-      }
-    } else {
-      phaseMatches
-        .sort((a, b) => new Date(a.date) - new Date(b.date))
-        .forEach(m => {
-          phaseSection.appendChild(createMatchCard(m, preds[m._id] || { home: '', away: '' }));
-        });
-    }
-
-    container.appendChild(phaseSection);
+    container.appendChild(groupSection);
   });
+
+  if (byGroup['?']?.length) {
+    const noGroup = document.createElement('div');
+    noGroup.className = 'group-section';
+    noGroup.innerHTML = '<div class="group-header"><h3 class="group-title">Sin grupo asignado</h3></div>';
+    byGroup['?']
+      .sort((a, b) => new Date(a.date) - new Date(b.date))
+      .forEach(m => {
+        noGroup.appendChild(createMatchCard(m, preds[m._id] || { home: '', away: '' }));
+      });
+    container.appendChild(noGroup);
+  }
+
+  // Sección Campeón del Mundial
+  const allTeams = [...new Set(groupMatches.flatMap(m => [m.homeTeam, m.awayTeam]))].sort();
+  const currentChampion = preds.champion || '';
+
+  const champSection = document.createElement('div');
+  champSection.className = 'champion-section';
+  champSection.innerHTML = `
+    <div class="champion-header">
+      <h3>🏆 Campeón del Mundial 2026</h3>
+      <p class="champion-subtitle">Acertar el campeón suma 10 puntos extra al ranking</p>
+    </div>
+    <select id="champion-select" class="champion-select" onchange="markProdeUnsaved()">
+      <option value="">-- Seleccionar equipo --</option>
+      ${allTeams.map(t => `<option value="${escapeHTML(t)}"${t === currentChampion ? ' selected' : ''}>${escapeHTML(t)}</option>`).join('')}
+    </select>`;
+  container.appendChild(champSection);
 }
 
 function switchProdePhase(phase) {
@@ -365,7 +351,9 @@ async function saveProde() {
     const predictions = {};
     const errors      = [];
 
-    for (const match of MATCHES) {
+    const groupMatches = MATCHES.filter(m => m.phase === 'Fase de Grupos');
+
+    for (const match of groupMatches) {
       const id     = match._id;
       const homeEl = document.getElementById(`pred-home-${id}`);
       const awayEl = document.getElementById(`pred-away-${id}`);
@@ -404,6 +392,9 @@ async function saveProde() {
       showToast(errors.slice(0, 3).join(' | '), 'error');
       return false;
     }
+
+    const champSelect = document.getElementById('champion-select');
+    predictions.champion = champSelect ? champSelect.value : '';
 
     await apiCall('PUT', `/api/users/${currentUser}/predictions`, { predictions });
     if (users[currentUser]) {
@@ -472,18 +463,27 @@ async function renderRanking() {
     const { results, overrides } = latestResults;
     const rankings = [];
 
+    const groupMatchIds = new Set(
+      MATCHES.filter(m => m.phase === 'Fase de Grupos').map(m => m._id)
+    );
+
     rankingUsers.forEach(u => {
       const preds    = u.predictions || {};
       let acertados  = 0;
       let puntosAuto = 0;
 
-      Object.keys(results).forEach(matchId => {
+      groupMatchIds.forEach(matchId => {
         const r   = results[matchId];
         const p   = preds[matchId];
         const pts = calcMatchPoints(p, r);
         if (pts > 0) acertados++;
         puntosAuto += pts;
       });
+
+      if (preds.champion && results.champion && preds.champion === results.champion) {
+        puntosAuto += 10;
+        acertados++;
+      }
 
       const puntosManual = overrides[u.dni];
       const puntos       = puntosManual !== undefined ? puntosManual : puntosAuto;
@@ -545,6 +545,11 @@ async function renderPrizes() {
 
   function buildCard(prize) {
     const card = document.createElement('div');
+    if (prize.position === 99) {
+      card.className = 'prize-card prize-card--more';
+      card.innerHTML = `<div class="prize-info"><div class="prize-title prize-more-text">${escapeHTML(prize.name)}</div></div>`;
+      return card;
+    }
     card.className = 'prize-card';
     card.innerHTML = `
       ${prize.imageUrl ? `<img src="${escapeHTML(prize.imageUrl)}" alt="${escapeHTML(prize.name)}" class="prize-image" onerror="this.style.display='none'">` : ''}
@@ -566,12 +571,13 @@ function openViewPredictions(dni) {
   const u = users[dni];
   if (!u) return;
 
-  const preds   = u.predictions || {};
-  const results = latestResults.results;
+  const preds       = u.predictions || {};
+  const results     = latestResults.results;
+  const groupMatches = MATCHES.filter(m => m.phase === 'Fase de Grupos');
   let hits     = 0;
   let totalPts = 0;
 
-  MATCHES.forEach(m => {
+  groupMatches.forEach(m => {
     const p   = preds[m._id];
     const r   = results[m._id];
     const pts = calcMatchPoints(p, r);
@@ -579,8 +585,30 @@ function openViewPredictions(dni) {
     totalPts += pts;
   });
 
+  if (preds.champion && results.champion && preds.champion === results.champion) {
+    totalPts += 10;
+    hits++;
+  }
+
   let rows = '';
-  MATCHES.forEach(m => {
+
+  // Fila campeón al inicio
+  const champPred   = preds.champion || '—';
+  const champResult = results.champion || '—';
+  let champStatus   = '⏳';
+  if (results.champion) {
+    champStatus = preds.champion === results.champion ? '✅' : '❌';
+  }
+  rows += `
+    <tr style="background:var(--card-alt);">
+      <td><strong>🏆 Campeón del Mundial</strong></td>
+      <td style="text-align:center;">+10 pts</td>
+      <td style="text-align:center;">${escapeHTML(champPred)}</td>
+      <td style="text-align:center;">${escapeHTML(champResult)}</td>
+      <td style="text-align:center;">${champStatus}</td>
+    </tr>`;
+
+  groupMatches.forEach(m => {
     const p       = preds[m._id];
     const r       = results[m._id];
     const hasPred = p && (p.home !== '' || p.away !== '');

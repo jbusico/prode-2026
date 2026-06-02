@@ -60,17 +60,14 @@ async function seedAdmin() {
 async function seedPrizes() {
   try {
     const Prize = require('./models/Prize');
-    const count = await Prize.countDocuments();
-    if (count > 0) return;
-    await Prize.insertMany([
-      { category: 'prode', position: 1, name: 'Smart TV 43"',        description: 'Televisor Samsung 43" 4K UHD' },
-      { category: 'prode', position: 2, name: 'Tablet',              description: 'Tablet 10" con funda y teclado' },
-      { category: 'prode', position: 3, name: 'Auriculares',         description: 'Auriculares inalámbricos Bluetooth' },
-      { category: 'rifa',  position: 1, name: 'Bicicleta',           description: 'Mountain bike rodado 29' },
-      { category: 'rifa',  position: 2, name: 'Cafetera',            description: 'Cafetera de cápsulas con kit de inicio' },
-      { category: 'rifa',  position: 3, name: 'Vale de compras',     description: 'Vale por $50.000 en supermercado' },
-    ]);
-    console.log('✅ Premios de ejemplo creados');
+    const defined = [
+      { category: 'prode', position: 1, name: 'Camiseta de la Selección Argentina', description: 'Camiseta oficial de la Selección Argentina' },
+      { category: 'prode', position: 99, name: '¡Y muchos premios más!',             description: '' },
+      { category: 'rifa',  position: 99, name: '¡Y muchos premios más!',             description: '' },
+    ];
+    await Prize.deleteMany({});
+    await Prize.insertMany(defined);
+    console.log('✅ Premios actualizados');
   } catch (err) {
     console.error('Error al crear premios:', err.message);
   }
