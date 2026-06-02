@@ -736,7 +736,18 @@ button { font-family: 'Barlow', sans-serif; }
   color: var(--text) !important;
 }
 .result-input:focus { border-color: var(--rojo); outline: none; box-shadow: 0 0 0 3px rgba(224, 90, 110, 0.15); }
-.result-inputs button:not([style*="pointer-events:none"]):hover { border-color: var(--error) !important; color: var(--error) !important; background: rgba(239,68,68,0.08) !important; }
+.clear-result-btn {
+  background: none;
+  border: 1.5px solid var(--gris-medio);
+  border-radius: 6px;
+  color: var(--text-light);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 6px 9px;
+  flex-shrink: 0;
+  transition: border-color 0.2s, color 0.2s, background 0.2s;
+}
+.clear-result-btn:hover { border-color: var(--error); color: var(--error); background: rgba(239,68,68,0.08); }
 
 .logs-container {
   background: var(--card);

@@ -283,7 +283,6 @@ function switchAdminResultsPhase(phase) {
 function buildResultCard(match, res) {
   const id   = match._id;
   const r    = res || { home: '', away: '' };
-  const hasResult = r.home !== '' && r.away !== '';
   const card = document.createElement('div');
   card.className = 'result-card';
   card.innerHTML = `
@@ -301,12 +300,7 @@ function buildResultCard(match, res) {
         id="clear-btn-${id}"
         onclick="clearMatchResult('${id}')"
         title="Borrar resultado"
-        style="
-          background:none; border:1.5px solid var(--gris-medio); border-radius:6px;
-          color:var(--text-light); cursor:pointer; font-size:14px; padding:6px 9px;
-          transition:all 0.2s; flex-shrink:0;
-          ${hasResult ? '' : 'opacity:0.3; pointer-events:none;'}
-        ">✕</button>
+        class="clear-result-btn">✕</button>
     </div>`;
   return card;
 }
@@ -315,12 +309,13 @@ async function clearMatchResult(matchId) {
   const homeEl = document.getElementById(`res-home-${matchId}`);
   const awayEl = document.getElementById(`res-away-${matchId}`);
   if (!homeEl || !awayEl) return;
+  if (homeEl.value === '' && awayEl.value === '') {
+    showToast('No hay resultado cargado', 'info');
+    return;
+  }
 
   homeEl.value = '';
   awayEl.value = '';
-
-  const btn = document.getElementById(`clear-btn-${matchId}`);
-  if (btn) { btn.style.opacity = '0.3'; btn.style.pointerEvents = 'none'; }
 
   showLoading('Borrando resultado...');
   try {
