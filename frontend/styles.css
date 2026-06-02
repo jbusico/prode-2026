@@ -868,11 +868,13 @@ button { font-family: 'Barlow', sans-serif; }
 }
 
 @media (max-width: 480px) {
-  .navbar { padding: 0 12px; height: 52px; }
-  .nav-links { gap: 0; }
+  .navbar { padding: 6px 12px; height: auto; min-height: 52px; gap: 4px; flex-wrap: wrap; }
+  .nav-logo { order: 1; }
+  .nav-right { order: 2; margin-left: auto; gap: 8px; }
+  .nav-links { order: 3; width: 100%; flex: none; justify-content: center; flex-wrap: wrap; gap: 2px; padding-bottom: 4px; }
   .nav-link { padding: 4px 8px; font-size: 11px; }
-  .nav-right { gap: 8px; }
   .nav-user { display: none; }
+  .page { min-height: calc(100vh - 90px); }
   .login-card { padding: 20px; }
   .login-title { font-size: 28px; }
   .hero-content h1 { font-size: 32px; }
