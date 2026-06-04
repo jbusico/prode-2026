@@ -186,9 +186,26 @@ function translateTeam(espnName) {
 
 // ===== ROUTES =====
 
+const MISSING_GRUPO_J = [
+  { homeTeam: 'Argelia',  awayTeam: 'Austria',   group: 'J' },
+  { homeTeam: 'Jordania', awayTeam: 'Argentina', group: 'J' },
+];
+
 // GET /api/matches
 router.get('/', async (req, res) => {
   try {
+    for (const m of MISSING_GRUPO_J) {
+      const exists = await Match.findOne({
+        $or: [
+          { homeTeam: m.homeTeam, awayTeam: m.awayTeam },
+          { homeTeam: m.awayTeam, awayTeam: m.homeTeam },
+        ]
+      });
+      if (!exists) {
+        await Match.create({ ...m, phase: 'Fase de Grupos', status: 'scheduled' });
+        console.log(`✅ Partido creado: ${m.homeTeam} vs ${m.awayTeam}`);
+      }
+    }
     const matches = await Match.find({}).sort({ date: 1, matchNumber: 1 }).lean();
     res.json(matches);
   } catch (err) {
