@@ -57,6 +57,30 @@ async function seedAdmin() {
   }
 }
 
+async function seedMatches() {
+  try {
+    const Match = require('./models/Match');
+    const missing = [
+      { homeTeam: 'Argelia',   awayTeam: 'Austria',    group: 'J' },
+      { homeTeam: 'Jordania',  awayTeam: 'Argentina',  group: 'J' },
+    ];
+    for (const m of missing) {
+      const exists = await Match.findOne({
+        $or: [
+          { homeTeam: m.homeTeam, awayTeam: m.awayTeam },
+          { homeTeam: m.awayTeam, awayTeam: m.homeTeam },
+        ]
+      });
+      if (!exists) {
+        await Match.create({ ...m, phase: 'Fase de Grupos', status: 'scheduled' });
+        console.log(`✅ Partido agregado: ${m.homeTeam} vs ${m.awayTeam}`);
+      }
+    }
+  } catch (err) {
+    console.error('Error al crear partidos:', err.message);
+  }
+}
+
 async function seedPrizes() {
   try {
     const Prize = require('./models/Prize');
@@ -77,6 +101,7 @@ if (process.env.MONGODB_URI) {
     .then(async () => {
       console.log('✅ MongoDB conectado');
       await seedAdmin();
+      await seedMatches();
       await seedPrizes();
 
       if (!process.env.VERCEL) {
