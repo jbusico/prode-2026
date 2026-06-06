@@ -722,44 +722,35 @@ async function renderAdminMatches() {
 
   try {
     const matches = await apiCall('GET', '/api/matches');
-    const groupMatches = matches.filter(m => m.phase === 'Fase de Grupos');
 
-    if (groupMatches.length === 0) {
-      container.innerHTML = '<p style="color:var(--text-light);padding:12px 0">No hay partidos de Fase de Grupos.</p>';
+    if (matches.length === 0) {
+      container.innerHTML = '<p style="color:var(--text-light);padding:12px 0">No hay partidos cargados.</p>';
       return;
     }
 
-    const byGroup = {};
-    groupMatches.forEach(m => {
-      const g = m.group || '?';
-      if (!byGroup[g]) byGroup[g] = [];
-      byGroup[g].push(m);
-    });
+    let html = '<table class="admin-table"><thead><tr><th>Local</th><th>Visitante</th><th>Grupo</th><th>Fase</th><th>Acciones</th></tr></thead><tbody>';
 
-    let html = '<table class="admin-table"><thead><tr><th>Local</th><th>Visitante</th><th>Grupo</th><th>Acciones</th></tr></thead><tbody>';
-
-    [...GROUP_ORDER, '?'].forEach(g => {
-      if (!byGroup[g]) return;
-      byGroup[g]
-        .sort((a, b) => new Date(a.date) - new Date(b.date))
-        .forEach(m => {
-          const label = `${escapeHTML(m.homeTeam)} vs ${escapeHTML(m.awayTeam)}`;
-          html += `<tr>
-            <td>${escapeHTML(m.homeTeam)}</td>
-            <td>${escapeHTML(m.awayTeam)}</td>
-            <td>${m.group || '<span style="color:var(--rojo)">Sin grupo</span>'}</td>
-            <td style="display:flex;gap:6px;">
-              <button class="btn-secondary" style="padding:4px 10px;font-size:13px;"
-                data-id="${m._id}"
-                data-home="${escapeHTML(m.homeTeam)}" data-away="${escapeHTML(m.awayTeam)}"
-                data-group="${m.group || ''}" data-phase="${escapeHTML(m.phase)}"
-                onclick="openEditMatchModal(this.dataset)">✏️ Editar</button>
-              <button class="btn-danger" style="padding:4px 10px;font-size:13px;"
-                data-id="${m._id}" data-label="${label}"
-                onclick="deleteMatch(this.dataset.id, this.dataset.label)">🗑️</button>
-            </td>
-          </tr>`;
-        });
+    matches.forEach(m => {
+      const label = `${escapeHTML(m.homeTeam)} vs ${escapeHTML(m.awayTeam)}`;
+      const groupCell = m.group
+        ? m.group
+        : '<span style="color:var(--rojo)">Sin grupo</span>';
+      html += `<tr>
+        <td>${escapeHTML(m.homeTeam)}</td>
+        <td>${escapeHTML(m.awayTeam)}</td>
+        <td>${groupCell}</td>
+        <td style="font-size:12px;color:var(--text-light)">${escapeHTML(m.phase || '–')}</td>
+        <td style="display:flex;gap:6px;">
+          <button class="btn-secondary" style="padding:4px 10px;font-size:13px;"
+            data-id="${m._id}"
+            data-home="${escapeHTML(m.homeTeam)}" data-away="${escapeHTML(m.awayTeam)}"
+            data-group="${m.group || ''}" data-phase="${escapeHTML(m.phase || 'Fase de Grupos')}"
+            onclick="openEditMatchModal(this.dataset)">✏️ Editar</button>
+          <button class="btn-danger" style="padding:4px 10px;font-size:13px;"
+            data-id="${m._id}" data-label="${label}"
+            onclick="deleteMatch(this.dataset.id, this.dataset.label)">🗑️</button>
+        </td>
+      </tr>`;
     });
 
     html += '</tbody></table>';
