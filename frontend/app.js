@@ -487,34 +487,10 @@ async function renderRanking() {
     rankingUsers.forEach(u => { users[u.dni] = u; });
     applyPredictionsClosedUI();
 
-    const { results, overrides } = latestResults;
     const rankings = [];
 
-    const groupMatchIds = new Set(
-      MATCHES.filter(m => m.phase === 'Fase de Grupos').map(m => m._id)
-    );
-
     rankingUsers.forEach(u => {
-      const preds    = u.predictions || {};
-      let acertados  = 0;
-      let puntosAuto = 0;
-
-      groupMatchIds.forEach(matchId => {
-        const r   = results[matchId];
-        const p   = preds[matchId];
-        const pts = calcMatchPoints(p, r);
-        if (pts > 0) acertados++;
-        puntosAuto += pts;
-      });
-
-      if (preds.champion && results.champion && preds.champion === results.champion) {
-        puntosAuto += 10;
-        acertados++;
-      }
-
-      const puntosManual = overrides[u.dni];
-      const puntos       = puntosManual !== undefined ? puntosManual : puntosAuto;
-      rankings.push({ dni: u.dni, nombre: u.nombre, aciertos: acertados, puntos, puntosAuto });
+      rankings.push({ dni: u.dni, nombre: u.nombre, aciertos: u.aciertos, puntos: u.puntos, puntosAuto: u.puntosAuto });
     });
 
     rankings.sort((a, b) => b.puntos - a.puntos);
@@ -544,7 +520,7 @@ async function renderRanking() {
           <td>${escapeHTML(rank.nombre)}</td>
           <td>${rank.aciertos}</td>
           <td>${rank.puntos}</td>
-          <td><button class="btn-secondary" onclick="openViewPredictions('${rank.dni}')">Ver pronósticos</button></td>`;
+          <td>${rank.dni === currentUser ? `<button class="btn-secondary" onclick="openViewPredictions('${rank.dni}')">Ver pronósticos</button>` : ''}</td>`;
         tbody.appendChild(tr);
       });
     }
