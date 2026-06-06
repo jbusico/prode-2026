@@ -489,6 +489,13 @@ async function renderRanking() {
 
     const rankings = [];
 
+    const groupMatchIds = MATCHES.filter(m => m.phase === 'Fase de Grupos').map(m => m._id);
+    const playedGroupCount = groupMatchIds.filter(id => {
+      const r = latestResults.results[id];
+      return r && r.home !== '';
+    }).length;
+    const totalPlayed = playedGroupCount + (latestResults.results.champion ? 1 : 0);
+
     rankingUsers.forEach(u => {
       rankings.push({ dni: u.dni, nombre: u.nombre, aciertos: u.aciertos, puntos: u.puntos, puntosAuto: u.puntosAuto });
     });
@@ -520,7 +527,10 @@ async function renderRanking() {
           <td>${escapeHTML(rank.nombre)}</td>
           <td>${rank.aciertos}</td>
           <td>${rank.puntos}</td>
-          <td>${rank.dni === currentUser ? `<button class="btn-secondary" onclick="openViewPredictions('${rank.dni}')">Ver pronósticos</button>` : ''}</td>`;
+          <td style="text-align:center;">
+            ${totalPlayed > 0 ? `${rank.aciertos}/${totalPlayed} (${Math.round(rank.aciertos / totalPlayed * 100)}%)` : '—'}
+            ${rank.dni === currentUser ? `<br><button class="btn-secondary" style="margin-top:4px;" onclick="openViewPredictions('${rank.dni}')">Mis pronósticos</button>` : ''}
+          </td>`;
         tbody.appendChild(tr);
       });
     }
