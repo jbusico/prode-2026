@@ -20,9 +20,10 @@ function switchAdminTab(tabName) {
     if (b.textContent.toLowerCase().includes(tabName)) b.classList.add('active');
   });
 
-  if (tabName === 'users')   renderAdminUsers();
-  if (tabName === 'results') renderAdminResults();
-if (tabName === 'logs')    renderAdminLogs();
+  if (tabName === 'users')    renderAdminUsers();
+  if (tabName === 'results')  renderAdminResults();
+  if (tabName === 'partidos') renderAdminMatches();
+  if (tabName === 'logs')     renderAdminLogs();
 }
 
 // ===== ADMIN: USUARIOS =====
@@ -709,6 +710,113 @@ function downloadAuditLogs() {
   });
   downloadCSV('audit_logs.csv', lines);
   showToast('📥 Descargando logs...', 'info');
+}
+
+// ===== ADMIN: PARTIDOS =====
+
+async function renderAdminMatches() {
+  const container = document.getElementById('matches-list-admin');
+  container.innerHTML = '<p style="color:var(--text-light);padding:12px 0">Cargando partidos...</p>';
+
+  try {
+    const matches = await apiCall('GET', '/api/matches');
+    const groupMatches = matches.filter(m => m.phase === 'Fase de Grupos');
+
+    if (groupMatches.length === 0) {
+      container.innerHTML = '<p style="color:var(--text-light);padding:12px 0">No hay partidos de Fase de Grupos.</p>';
+      return;
+    }
+
+    const byGroup = {};
+    groupMatches.forEach(m => {
+      const g = m.group || '?';
+      if (!byGroup[g]) byGroup[g] = [];
+      byGroup[g].push(m);
+    });
+
+    let html = '<table class="admin-table"><thead><tr><th>Local</th><th>Visitante</th><th>Grupo</th><th>Acción</th></tr></thead><tbody>';
+
+    [...GROUP_ORDER, '?'].forEach(g => {
+      if (!byGroup[g]) return;
+      byGroup[g]
+        .sort((a, b) => new Date(a.date) - new Date(b.date))
+        .forEach(m => {
+          const label = `${escapeHTML(m.homeTeam)} vs ${escapeHTML(m.awayTeam)}`;
+          html += `<tr>
+            <td>${escapeHTML(m.homeTeam)}</td>
+            <td>${escapeHTML(m.awayTeam)}</td>
+            <td>${m.group || '–'}</td>
+            <td><button class="btn-danger" style="padding:4px 10px;font-size:13px;"
+              data-id="${m._id}" data-label="${label}"
+              onclick="deleteMatch(this.dataset.id, this.dataset.label)">🗑️ Eliminar</button></td>
+          </tr>`;
+        });
+    });
+
+    html += '</tbody></table>';
+    container.innerHTML = html;
+  } catch (e) {
+    container.innerHTML = '<p style="color:var(--text-light);padding:12px 0">Error al cargar partidos.</p>';
+  }
+}
+
+function openAddMatchModal() {
+  document.getElementById('nm-home').value  = '';
+  document.getElementById('nm-away').value  = '';
+  document.getElementById('nm-group').value = '';
+  document.getElementById('nm-phase').value = 'Fase de Grupos';
+  document.getElementById('nm-home-error').textContent = '';
+  document.getElementById('nm-away-error').textContent = '';
+  openModal('modal-add-match');
+}
+
+async function saveNewMatch() {
+  const homeTeam = document.getElementById('nm-home').value.trim();
+  const awayTeam = document.getElementById('nm-away').value.trim();
+  const group    = document.getElementById('nm-group').value;
+  const phase    = document.getElementById('nm-phase').value;
+
+  document.getElementById('nm-home-error').textContent = '';
+  document.getElementById('nm-away-error').textContent = '';
+
+  let valid = true;
+  if (!homeTeam) { document.getElementById('nm-home-error').textContent = 'Campo requerido'; valid = false; }
+  if (!awayTeam) { document.getElementById('nm-away-error').textContent = 'Campo requerido'; valid = false; }
+  if (!valid) return;
+
+  try {
+    showLoading('Agregando partido...');
+    await apiCall('POST', '/api/matches', { homeTeam, awayTeam, group: group || null, phase });
+    hideLoading();
+    closeModal('modal-add-match');
+    showToast('✅ Partido agregado correctamente', 'success');
+    await loadMatchesFromAPI();
+    renderAdminMatches();
+  } catch (error) {
+    hideLoading();
+    showToast(error.message || 'Error al agregar partido', 'error');
+  }
+}
+
+async function deleteMatch(id, label) {
+  showConfirm(
+    `¿Eliminar el partido "${label}"? Esta acción no se puede deshacer.`,
+    async () => {
+      try {
+        showLoading('Eliminando partido...');
+        await apiCall('DELETE', `/api/matches/${id}`);
+        hideLoading();
+        showToast('✅ Partido eliminado', 'success');
+        await loadMatchesFromAPI();
+        renderAdminMatches();
+      } catch (error) {
+        hideLoading();
+        showToast(error.message || 'Error al eliminar partido', 'error');
+      }
+    },
+    true,
+    'Eliminar Partido'
+  );
 }
 
 // ===== INICIALIZACIÓN =====

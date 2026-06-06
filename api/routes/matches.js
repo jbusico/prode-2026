@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const mongoose = require('mongoose');
 const Match = require('../models/Match');
+const { requireAdmin } = require('../middleware/auth');
 
 // ===== GRUPOS OFICIALES - COPA MUNDIAL 2026 =====
 
@@ -223,6 +224,46 @@ router.get('/', async (req, res) => {
     await ensureMissingGrupoJ();
     const matches = await Match.find({}).sort({ date: 1, matchNumber: 1 }).lean();
     res.json(matches);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/matches — solo admin
+router.post('/', requireAdmin, async (req, res) => {
+  try {
+    const { homeTeam, awayTeam, group, phase } = req.body;
+    if (!homeTeam?.trim() || !awayTeam?.trim()) {
+      return res.status(400).json({ error: 'Equipo local y visitante son requeridos' });
+    }
+    const exists = await Match.findOne({
+      $or: [
+        { homeTeam: homeTeam.trim(), awayTeam: awayTeam.trim() },
+        { homeTeam: awayTeam.trim(), awayTeam: homeTeam.trim() },
+      ]
+    });
+    if (exists) {
+      return res.status(409).json({ error: 'Ya existe un partido entre esos equipos' });
+    }
+    const match = await Match.create({
+      homeTeam: homeTeam.trim(),
+      awayTeam: awayTeam.trim(),
+      group:    group || null,
+      phase:    phase || 'Fase de Grupos',
+      status:   'scheduled',
+    });
+    res.status(201).json(match);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/matches/:id — solo admin
+router.delete('/:id', requireAdmin, async (req, res) => {
+  try {
+    const match = await Match.findByIdAndDelete(req.params.id);
+    if (!match) return res.status(404).json({ error: 'Partido no encontrado' });
+    res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

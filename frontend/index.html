@@ -229,7 +229,8 @@
     <div class="admin-tabs">
       <button class="admin-tab-btn active" onclick="switchAdminTab('users')">👥 Usuarios</button>
       <button class="admin-tab-btn" onclick="switchAdminTab('results')">📊 Resultados</button>
-<button class="admin-tab-btn" onclick="switchAdminTab('logs')">📋 Auditoría</button>
+      <button class="admin-tab-btn" onclick="switchAdminTab('partidos')">⚽ Partidos</button>
+      <button class="admin-tab-btn" onclick="switchAdminTab('logs')">📋 Auditoría</button>
     </div>
 
     <!-- TAB: USUARIOS -->
@@ -274,6 +275,16 @@
       <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:16px;">
         <button class="btn-primary" onclick="saveResultsWithLoader()">Guardar Resultados</button>
         <button class="btn-danger" onclick="clearResults()">🗑️ Borrar Todos los Resultados</button>
+      </div>
+    </div>
+
+    <!-- TAB: PARTIDOS -->
+    <div id="admin-partidos-tab" class="admin-tab">
+      <div style="margin-bottom:20px;">
+        <button class="btn-primary" onclick="openAddMatchModal()">➕ Agregar Partido</button>
+      </div>
+      <div id="matches-list-admin" class="admin-table-wrapper">
+        <!-- Generado con JavaScript -->
       </div>
     </div>
 
@@ -515,6 +526,63 @@
     <div class="modal-footer">
       <button class="btn-secondary" onclick="closeModal('modal-add-user')">Cancelar</button>
       <button class="btn-primary" onclick="saveAddUser()">Agregar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Agregar Partido -->
+<div id="modal-add-match" class="modal hidden">
+  <div class="modal-overlay" onclick="closeModal('modal-add-match')"></div>
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2>Agregar Partido</h2>
+      <button class="modal-close" onclick="closeModal('modal-add-match')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Equipo Local *</label>
+        <input type="text" id="nm-home" placeholder="Ej: Argelia">
+        <span class="error-text" id="nm-home-error"></span>
+      </div>
+      <div class="form-group">
+        <label>Equipo Visitante *</label>
+        <input type="text" id="nm-away" placeholder="Ej: Austria">
+        <span class="error-text" id="nm-away-error"></span>
+      </div>
+      <div class="form-group">
+        <label>Grupo</label>
+        <select id="nm-group">
+          <option value="">-- Sin grupo --</option>
+          <option value="A">Grupo A</option>
+          <option value="B">Grupo B</option>
+          <option value="C">Grupo C</option>
+          <option value="D">Grupo D</option>
+          <option value="E">Grupo E</option>
+          <option value="F">Grupo F</option>
+          <option value="G">Grupo G</option>
+          <option value="H">Grupo H</option>
+          <option value="I">Grupo I</option>
+          <option value="J">Grupo J</option>
+          <option value="K">Grupo K</option>
+          <option value="L">Grupo L</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Fase</label>
+        <select id="nm-phase">
+          <option value="Fase de Grupos">Fase de Grupos</option>
+          <option value="Ronda de 32">Ronda de 32</option>
+          <option value="Ronda de 16">Ronda de 16</option>
+          <option value="Cuartos de Final">Cuartos de Final</option>
+          <option value="Semifinal">Semifinal</option>
+          <option value="Tercer Puesto">Tercer Puesto</option>
+          <option value="Final">Final</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeModal('modal-add-match')">Cancelar</button>
+      <button class="btn-primary" onclick="saveNewMatch()">Agregar Partido</button>
     </div>
   </div>
 </div>
