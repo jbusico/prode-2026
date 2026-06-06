@@ -40,7 +40,10 @@ function renderAdminUsers() {
       <td>${escapeHTML(u.nombre)}</td>
       <td>${escapeHTML(u.email)}</td>
       <td>${u.paid ? '✅' : '❌'}</td>
-      <td><button class="btn-secondary" onclick="openEditUser('${u.dni}')">Editar</button></td>`;
+      <td style="display:flex;gap:6px;">
+        <button class="btn-secondary" onclick="openEditUser('${u.dni}')">Editar</button>
+        <button class="btn-secondary" onclick="openViewPredictions('${u.dni}')" title="Ver pronósticos cargados">🔍 Pronósticos</button>
+      </td>`;
     tbody.appendChild(tr);
   });
 }
@@ -841,6 +844,94 @@ async function deleteMatch(id, label) {
     true,
     'Eliminar Partido'
   );
+}
+
+// ===== ADMIN: VER PRONÓSTICOS DE USUARIO =====
+
+function openViewPredictions(dni) {
+  const u = users[dni];
+  if (!u) return;
+
+  const content = document.getElementById('modal-view-predictions-content');
+  const predictions = u.predictions || {};
+
+  const groupMatches = MATCHES.filter(m => m.phase === 'Fase de Grupos');
+
+  if (groupMatches.length === 0) {
+    content.innerHTML = '<p style="color:var(--text-light);padding:12px 0;">No hay partidos cargados todavía.</p>';
+    document.querySelector('#modal-view-predictions .modal-header h2').textContent = `Pronósticos de ${escapeHTML(u.nombre)}`;
+    openModal('modal-view-predictions');
+    return;
+  }
+
+  const hasPredictions = Object.keys(predictions).length > 0;
+  const champion = predictions.champion || '';
+
+  let html = `<p style="margin-bottom:16px;color:var(--text-light);">
+    ${hasPredictions ? 'Pronósticos cargados por el participante.' : '<strong style="color:var(--error);">Este usuario aún no cargó pronósticos.</strong>'}
+  </p>`;
+
+  // Campeón
+  html += `<div style="margin-bottom:16px;padding:10px 14px;background:var(--card-alt);border-radius:8px;">
+    <strong>🏆 Campeón pronosticado:</strong>
+    ${champion ? `<span style="margin-left:8px;">${escapeHTML(champion)}</span>` : '<span style="margin-left:8px;color:var(--text-light);">Sin completar</span>'}
+  </div>`;
+
+  // Agrupar por grupo
+  const byGroup = {};
+  groupMatches.forEach(m => {
+    const g = m.group || '?';
+    if (!byGroup[g]) byGroup[g] = [];
+    byGroup[g].push(m);
+  });
+
+  [...GROUP_ORDER, '?'].forEach(gl => {
+    const gMatches = byGroup[gl];
+    if (!gMatches || gMatches.length === 0) return;
+
+    html += `<div style="margin-bottom:6px;margin-top:14px;font-weight:700;color:var(--text-light);font-size:13px;text-transform:uppercase;letter-spacing:1px;">${gl !== '?' ? `Grupo ${gl}` : 'Sin grupo'}</div>`;
+    html += '<div style="display:flex;flex-direction:column;gap:6px;">';
+
+    gMatches
+      .sort((a, b) => new Date(a.date) - new Date(b.date))
+      .forEach(m => {
+        const p = predictions[m._id];
+        const hasHome = p && p.home !== undefined && p.home !== '';
+        const hasAway = p && p.away !== undefined && p.away !== '';
+        const filled = hasHome && hasAway;
+
+        const scoreText = filled
+          ? `<span style="font-weight:700;">${p.home} – ${p.away}</span>`
+          : `<span style="color:var(--text-light);font-style:italic;">Sin completar</span>`;
+
+        html += `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--card-alt);border-radius:6px;font-size:14px;">
+          <span style="flex:1;">${escapeHTML(m.homeTeam)} <span style="color:var(--text-light);">vs</span> ${escapeHTML(m.awayTeam)}</span>
+          ${scoreText}
+          <span style="font-size:18px;">${filled ? '✅' : '⬜'}</span>
+        </div>`;
+      });
+
+    html += '</div>';
+  });
+
+  const total = groupMatches.length;
+  const completed = groupMatches.filter(m => {
+    const p = predictions[m._id];
+    return p && p.home !== undefined && p.home !== '' && p.away !== undefined && p.away !== '';
+  }).length;
+
+  html = `<div style="margin-bottom:12px;display:flex;gap:16px;align-items:center;">
+    <div style="padding:8px 14px;background:var(--card-alt);border-radius:8px;font-size:14px;">
+      Completados: <strong>${completed} / ${total}</strong>
+    </div>
+    <div style="padding:8px 14px;background:var(--card-alt);border-radius:8px;font-size:14px;">
+      Estado: <strong style="color:${u.saved ? 'var(--success)' : 'var(--error)'};">${u.saved ? '✅ Guardado' : '❌ No guardado'}</strong>
+    </div>
+  </div>` + html;
+
+  content.innerHTML = html;
+  document.querySelector('#modal-view-predictions .modal-header h2').textContent = `Pronósticos de ${escapeHTML(u.nombre)}`;
+  openModal('modal-view-predictions');
 }
 
 // ===== INICIALIZACIÓN =====
