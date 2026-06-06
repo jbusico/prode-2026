@@ -258,6 +258,23 @@ router.post('/', requireAdmin, async (req, res) => {
   }
 });
 
+// PUT /api/matches/:id — solo admin (editar partido)
+router.put('/:id', requireAdmin, async (req, res) => {
+  try {
+    const { homeTeam, awayTeam, group, phase } = req.body;
+    const update = {};
+    if (homeTeam !== undefined) update.homeTeam = homeTeam.trim();
+    if (awayTeam !== undefined) update.awayTeam = awayTeam.trim();
+    if (group !== undefined) update.group = group || null;
+    if (phase  !== undefined) update.phase  = phase;
+    const match = await Match.findByIdAndUpdate(req.params.id, { $set: update }, { new: true });
+    if (!match) return res.status(404).json({ error: 'Partido no encontrado' });
+    res.json(match);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // DELETE /api/matches/:id — solo admin
 router.delete('/:id', requireAdmin, async (req, res) => {
   try {

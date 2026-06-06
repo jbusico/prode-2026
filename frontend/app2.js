@@ -714,6 +714,8 @@ function downloadAuditLogs() {
 
 // ===== ADMIN: PARTIDOS =====
 
+let editingMatchId = null;
+
 async function renderAdminMatches() {
   const container = document.getElementById('matches-list-admin');
   container.innerHTML = '<p style="color:var(--text-light);padding:12px 0">Cargando partidos...</p>';
@@ -734,7 +736,7 @@ async function renderAdminMatches() {
       byGroup[g].push(m);
     });
 
-    let html = '<table class="admin-table"><thead><tr><th>Local</th><th>Visitante</th><th>Grupo</th><th>Acción</th></tr></thead><tbody>';
+    let html = '<table class="admin-table"><thead><tr><th>Local</th><th>Visitante</th><th>Grupo</th><th>Acciones</th></tr></thead><tbody>';
 
     [...GROUP_ORDER, '?'].forEach(g => {
       if (!byGroup[g]) return;
@@ -745,10 +747,17 @@ async function renderAdminMatches() {
           html += `<tr>
             <td>${escapeHTML(m.homeTeam)}</td>
             <td>${escapeHTML(m.awayTeam)}</td>
-            <td>${m.group || '–'}</td>
-            <td><button class="btn-danger" style="padding:4px 10px;font-size:13px;"
-              data-id="${m._id}" data-label="${label}"
-              onclick="deleteMatch(this.dataset.id, this.dataset.label)">🗑️ Eliminar</button></td>
+            <td>${m.group || '<span style="color:var(--rojo)">Sin grupo</span>'}</td>
+            <td style="display:flex;gap:6px;">
+              <button class="btn-secondary" style="padding:4px 10px;font-size:13px;"
+                data-id="${m._id}"
+                data-home="${escapeHTML(m.homeTeam)}" data-away="${escapeHTML(m.awayTeam)}"
+                data-group="${m.group || ''}" data-phase="${escapeHTML(m.phase)}"
+                onclick="openEditMatchModal(this.dataset)">✏️ Editar</button>
+              <button class="btn-danger" style="padding:4px 10px;font-size:13px;"
+                data-id="${m._id}" data-label="${label}"
+                onclick="deleteMatch(this.dataset.id, this.dataset.label)">🗑️</button>
+            </td>
           </tr>`;
         });
     });
@@ -761,10 +770,26 @@ async function renderAdminMatches() {
 }
 
 function openAddMatchModal() {
+  editingMatchId = null;
+  document.getElementById('nm-modal-title').textContent = 'Agregar Partido';
+  document.getElementById('nm-submit-btn').textContent  = 'Agregar Partido';
   document.getElementById('nm-home').value  = '';
   document.getElementById('nm-away').value  = '';
   document.getElementById('nm-group').value = '';
   document.getElementById('nm-phase').value = 'Fase de Grupos';
+  document.getElementById('nm-home-error').textContent = '';
+  document.getElementById('nm-away-error').textContent = '';
+  openModal('modal-add-match');
+}
+
+function openEditMatchModal(dataset) {
+  editingMatchId = dataset.id;
+  document.getElementById('nm-modal-title').textContent = 'Editar Partido';
+  document.getElementById('nm-submit-btn').textContent  = 'Guardar Cambios';
+  document.getElementById('nm-home').value  = dataset.home;
+  document.getElementById('nm-away').value  = dataset.away;
+  document.getElementById('nm-group').value = dataset.group || '';
+  document.getElementById('nm-phase').value = dataset.phase || 'Fase de Grupos';
   document.getElementById('nm-home-error').textContent = '';
   document.getElementById('nm-away-error').textContent = '';
   openModal('modal-add-match');
@@ -785,16 +810,24 @@ async function saveNewMatch() {
   if (!valid) return;
 
   try {
-    showLoading('Agregando partido...');
-    await apiCall('POST', '/api/matches', { homeTeam, awayTeam, group: group || null, phase });
-    hideLoading();
-    closeModal('modal-add-match');
-    showToast('✅ Partido agregado correctamente', 'success');
+    if (editingMatchId) {
+      showLoading('Guardando cambios...');
+      await apiCall('PUT', `/api/matches/${editingMatchId}`, { homeTeam, awayTeam, group: group || null, phase });
+      hideLoading();
+      closeModal('modal-add-match');
+      showToast('✅ Partido actualizado correctamente', 'success');
+    } else {
+      showLoading('Agregando partido...');
+      await apiCall('POST', '/api/matches', { homeTeam, awayTeam, group: group || null, phase });
+      hideLoading();
+      closeModal('modal-add-match');
+      showToast('✅ Partido agregado correctamente', 'success');
+    }
     await loadMatchesFromAPI();
     renderAdminMatches();
   } catch (error) {
     hideLoading();
-    showToast(error.message || 'Error al agregar partido', 'error');
+    showToast(error.message || 'Error al guardar partido', 'error');
   }
 }
 

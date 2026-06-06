@@ -535,7 +535,7 @@
   <div class="modal-overlay" onclick="closeModal('modal-add-match')"></div>
   <div class="modal-content">
     <div class="modal-header">
-      <h2>Agregar Partido</h2>
+      <h2 id="nm-modal-title">Agregar Partido</h2>
       <button class="modal-close" onclick="closeModal('modal-add-match')">&times;</button>
     </div>
     <div class="modal-body">
@@ -582,7 +582,7 @@
     </div>
     <div class="modal-footer">
       <button class="btn-secondary" onclick="closeModal('modal-add-match')">Cancelar</button>
-      <button class="btn-primary" onclick="saveNewMatch()">Agregar Partido</button>
+      <button class="btn-primary" id="nm-submit-btn" onclick="saveNewMatch()">Agregar Partido</button>
     </div>
   </div>
 </div>
