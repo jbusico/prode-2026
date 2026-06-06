@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const mongoose = require('mongoose');
 const Match = require('../models/Match');
 
 // ===== GRUPOS OFICIALES - COPA MUNDIAL 2026 =====
@@ -191,27 +192,35 @@ const MISSING_GRUPO_J = [
   { homeTeam: 'Jordania', awayTeam: 'Argentina', group: 'J' },
 ];
 
+let grupoJSeeded = false;
+
 async function ensureMissingGrupoJ() {
+  if (grupoJSeeded) return;
+  // Espera a que MongoDB esté conectado antes de operar
+  await mongoose.connection.asPromise();
   for (const m of MISSING_GRUPO_J) {
     try {
-      await Match.findOneAndUpdate(
-        { $or: [
+      const exists = await Match.findOne({
+        $or: [
           { homeTeam: m.homeTeam, awayTeam: m.awayTeam },
           { homeTeam: m.awayTeam, awayTeam: m.homeTeam },
-        ]},
-        { $setOnInsert: { ...m, phase: 'Fase de Grupos', status: 'scheduled' } },
-        { upsert: true, new: false }
-      );
+        ]
+      });
+      if (!exists) {
+        await Match.create({ ...m, phase: 'Fase de Grupos', status: 'scheduled' });
+        console.log(`✅ Partido creado: ${m.homeTeam} vs ${m.awayTeam}`);
+      }
     } catch (e) {
-      console.error(`Error upsert ${m.homeTeam} vs ${m.awayTeam}:`, e.message);
+      console.error(`Error creando ${m.homeTeam} vs ${m.awayTeam}:`, e.message);
     }
   }
+  grupoJSeeded = true;
 }
 
 // GET /api/matches
 router.get('/', async (req, res) => {
-  await ensureMissingGrupoJ();
   try {
+    await ensureMissingGrupoJ();
     const matches = await Match.find({}).sort({ date: 1, matchNumber: 1 }).lean();
     res.json(matches);
   } catch (err) {
