@@ -58,26 +58,25 @@ async function seedAdmin() {
 }
 
 async function seedMatches() {
-  try {
-    const Match = require('./models/Match');
-    const missing = [
-      { homeTeam: 'Argelia',   awayTeam: 'Austria',    group: 'J' },
-      { homeTeam: 'Jordania',  awayTeam: 'Argentina',  group: 'J' },
-    ];
-    for (const m of missing) {
-      const exists = await Match.findOne({
-        $or: [
+  const Match = require('./models/Match');
+  const missing = [
+    { homeTeam: 'Argelia',   awayTeam: 'Austria',    group: 'J' },
+    { homeTeam: 'Jordania',  awayTeam: 'Argentina',  group: 'J' },
+  ];
+  for (const m of missing) {
+    try {
+      const result = await Match.findOneAndUpdate(
+        { $or: [
           { homeTeam: m.homeTeam, awayTeam: m.awayTeam },
           { homeTeam: m.awayTeam, awayTeam: m.homeTeam },
-        ]
-      });
-      if (!exists) {
-        await Match.create({ ...m, phase: 'Fase de Grupos', status: 'scheduled' });
-        console.log(`✅ Partido agregado: ${m.homeTeam} vs ${m.awayTeam}`);
-      }
+        ]},
+        { $setOnInsert: { ...m, phase: 'Fase de Grupos', status: 'scheduled' } },
+        { upsert: true, new: false }
+      );
+      if (!result) console.log(`✅ Partido agregado: ${m.homeTeam} vs ${m.awayTeam}`);
+    } catch (err) {
+      console.error(`Error creando ${m.homeTeam} vs ${m.awayTeam}:`, err.message);
     }
-  } catch (err) {
-    console.error('Error al crear partidos:', err.message);
   }
 }
 

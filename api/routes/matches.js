@@ -191,21 +191,27 @@ const MISSING_GRUPO_J = [
   { homeTeam: 'Jordania', awayTeam: 'Argentina', group: 'J' },
 ];
 
-// GET /api/matches
-router.get('/', async (req, res) => {
-  try {
-    for (const m of MISSING_GRUPO_J) {
-      const exists = await Match.findOne({
-        $or: [
+async function ensureMissingGrupoJ() {
+  for (const m of MISSING_GRUPO_J) {
+    try {
+      await Match.findOneAndUpdate(
+        { $or: [
           { homeTeam: m.homeTeam, awayTeam: m.awayTeam },
           { homeTeam: m.awayTeam, awayTeam: m.homeTeam },
-        ]
-      });
-      if (!exists) {
-        await Match.create({ ...m, phase: 'Fase de Grupos', status: 'scheduled' });
-        console.log(`✅ Partido creado: ${m.homeTeam} vs ${m.awayTeam}`);
-      }
+        ]},
+        { $setOnInsert: { ...m, phase: 'Fase de Grupos', status: 'scheduled' } },
+        { upsert: true, new: false }
+      );
+    } catch (e) {
+      console.error(`Error upsert ${m.homeTeam} vs ${m.awayTeam}:`, e.message);
     }
+  }
+}
+
+// GET /api/matches
+router.get('/', async (req, res) => {
+  await ensureMissingGrupoJ();
+  try {
     const matches = await Match.find({}).sort({ date: 1, matchNumber: 1 }).lean();
     res.json(matches);
   } catch (err) {
