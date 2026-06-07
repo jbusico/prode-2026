@@ -18,6 +18,13 @@ async function initApp() {
       const savedUser = JSON.parse(savedUserStr);
       users[savedUser.dni] = savedUser;
       currentUser = savedUser.dni;
+      try {
+        const freshUser = await apiCall('GET', `/api/users/${savedUser.dni}`);
+        users[savedUser.dni] = freshUser;
+        localStorage.setItem('prode_user', JSON.stringify(freshUser));
+      } catch (e) {
+        console.warn('No se pudo refrescar usuario desde API, usando caché local');
+      }
       if (savedUser.isAdmin) await loadAllUsers();
       updateUIAfterLogin();
       showPage('page-home');

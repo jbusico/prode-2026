@@ -848,7 +848,14 @@ async function deleteMatch(id, label) {
 
 // ===== ADMIN: VER PRONÓSTICOS DE USUARIO =====
 
-function openViewPredictions(dni) {
+async function openViewPredictions(dni) {
+  try {
+    const freshUser = await apiCall('GET', `/api/users/${dni}`);
+    users[dni] = freshUser;
+  } catch (e) {
+    console.warn('No se pudo refrescar usuario, usando caché');
+  }
+
   const u = users[dni];
   if (!u) return;
 

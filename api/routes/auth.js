@@ -31,7 +31,9 @@ router.post('/login', async (req, res) => {
         nombre: user.nombre,
         email: user.email,
         isAdmin: user.isAdmin,
-        paid: user.paid
+        paid: user.paid,
+        predictions: user.predictions || {},
+        saved: user.saved || false
       }
     });
   } catch (error) {
