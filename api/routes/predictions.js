@@ -10,12 +10,11 @@ function calcMatchPoints(p, r) {
   if (!p || !r || r.home === '' || r.away === '') return 0;
   const ph = Number(p.home), pa = Number(p.away);
   const rh = Number(r.home), ra = Number(r.away);
-  if (ph === rh && pa === ra) return 10;
+  if (ph === rh && pa === ra) return 3;
   const pWin = ph > pa ? 1 : ph < pa ? -1 : 0;
   const rWin = rh > ra ? 1 : rh < ra ? -1 : 0;
-  if (pWin !== rWin) return 0;
-  if (ph === rh || pa === ra) return 7;
-  return 5;
+  if (pWin === rWin) return 1;
+  return 0;
 }
 
 router.get('/ranking', requireAuth, async (req, res) => {
