@@ -633,7 +633,7 @@ function openViewPredictions(dni) {
     let status    = '⏳';
     if (r && r.home !== '' && hasPred) {
       const pts = calcMatchPoints(p, r);
-      status = pts === 10 ? '✅' : pts >= 5 ? '🟡' : '❌';
+      status = pts === 3 ? '✅' : pts === 1 ? '🟡' : '❌';
     }
     rows += `
       <tr>
