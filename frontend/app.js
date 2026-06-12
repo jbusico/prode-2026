@@ -247,6 +247,25 @@ function renderProdeUI() {
     byGroup[g].push(m);
   });
 
+  // Sección Campeón del Mundial — al tope
+  const allTeams = [...new Set(groupMatches.flatMap(m => [m.homeTeam, m.awayTeam]))].sort();
+  const currentChampion = preds.champion || '';
+  const isChampionLocked = !!(latestResults.locked && latestResults.locked['champion']);
+
+  const champSection = document.createElement('div');
+  champSection.className = 'champion-section';
+  champSection.innerHTML = `
+    <div class="champion-header">
+      <h3>🏆 Campeón del Mundial 2026</h3>
+      <p class="champion-subtitle">Acertar el campeón suma 10 puntos extra al ranking</p>
+    </div>
+    <select id="champion-select" class="champion-select" onchange="markProdeUnsaved()"${isChampionLocked ? ' disabled' : ''}>
+      <option value="">-- Seleccionar equipo --</option>
+      ${allTeams.map(t => `<option value="${escapeHTML(t)}"${t === currentChampion ? ' selected' : ''}>${escapeHTML(t)}</option>`).join('')}
+    </select>
+    ${isChampionLocked ? '<p style="font-size:12px;color:var(--text-light);margin-top:6px;">🔒 La elección de campeón está cerrada</p>' : ''}`;
+  container.appendChild(champSection);
+
   GROUP_ORDER.forEach(gl => {
     const gMatches = byGroup[gl];
     if (!gMatches || gMatches.length === 0) return;
@@ -279,23 +298,6 @@ function renderProdeUI() {
       });
     container.appendChild(noGroup);
   }
-
-  // Sección Campeón del Mundial
-  const allTeams = [...new Set(groupMatches.flatMap(m => [m.homeTeam, m.awayTeam]))].sort();
-  const currentChampion = preds.champion || '';
-
-  const champSection = document.createElement('div');
-  champSection.className = 'champion-section';
-  champSection.innerHTML = `
-    <div class="champion-header">
-      <h3>🏆 Campeón del Mundial 2026</h3>
-      <p class="champion-subtitle">Acertar el campeón suma 10 puntos extra al ranking</p>
-    </div>
-    <select id="champion-select" class="champion-select" onchange="markProdeUnsaved()">
-      <option value="">-- Seleccionar equipo --</option>
-      ${allTeams.map(t => `<option value="${escapeHTML(t)}"${t === currentChampion ? ' selected' : ''}>${escapeHTML(t)}</option>`).join('')}
-    </select>`;
-  container.appendChild(champSection);
 }
 
 function switchProdePhase(phase) {
@@ -357,7 +359,7 @@ function applyPredictionsClosedUI() {
   });
 
   const champSelect = document.getElementById('champion-select');
-  if (champSelect) champSelect.disabled = closed;
+  if (champSelect) champSelect.disabled = closed || !!(latestResults.locked && latestResults.locked['champion']);
 }
 
 async function saveProdeWithLoader() {
@@ -427,7 +429,11 @@ async function saveProde() {
     }
 
     const champSelect = document.getElementById('champion-select');
-    predictions.champion = champSelect ? champSelect.value : '';
+    if (latestResults.locked && latestResults.locked['champion']) {
+      predictions.champion = (users[currentUser]?.predictions?.champion) || '';
+    } else {
+      predictions.champion = champSelect ? champSelect.value : '';
+    }
 
     await apiCall('PUT', `/api/users/${currentUser}/predictions`, { predictions });
     if (users[currentUser]) {

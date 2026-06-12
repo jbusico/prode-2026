@@ -246,15 +246,28 @@ async function renderAdminResults() {
   // Sección Campeón al tope
   const allTeams = [...new Set(groupMatches.flatMap(m => [m.homeTeam, m.awayTeam]))].sort();
   const currentChampion = results.champion || '';
+  const isChampionLocked = !!locked['champion'];
 
   const champDiv = document.createElement('div');
   champDiv.className = 'champion-admin-section';
   champDiv.innerHTML = `
     <h4>🏆 Campeón del Mundial</h4>
-    <select id="admin-champion-select" class="champion-select">
-      <option value="">-- Sin resultado --</option>
-      ${allTeams.map(t => `<option value="${escapeHTML(t)}"${t === currentChampion ? ' selected' : ''}>${escapeHTML(t)}</option>`).join('')}
-    </select>`;
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:8px;">
+      <select id="admin-champion-select" class="champion-select"${isChampionLocked ? ' disabled' : ''}>
+        <option value="">-- Sin resultado --</option>
+        ${allTeams.map(t => `<option value="${escapeHTML(t)}"${t === currentChampion ? ' selected' : ''}>${escapeHTML(t)}</option>`).join('')}
+      </select>
+      <button
+        id="champion-lock-btn"
+        onclick="toggleChampionLock()"
+        title="${isChampionLocked ? 'Desbloquear pronóstico de campeón para usuarios' : 'Bloquear pronóstico de campeón para usuarios'}"
+        class="lock-result-btn${isChampionLocked ? ' locked' : ''}">
+        ${isChampionLocked ? '🔒' : '🔓'}
+      </button>
+    </div>
+    <p id="champion-lock-status" style="font-size:12px;color:var(--text-light);margin-top:6px;">
+      ${isChampionLocked ? '🔒 Bloqueado — los usuarios no pueden cambiar su elección de campeón' : '🔓 Habilitado — los usuarios pueden cambiar su elección de campeón'}
+    </p>`;
   form.appendChild(champDiv);
 
   // Partidos de Fase de Grupos
@@ -350,6 +363,38 @@ async function toggleMatchLock(matchId) {
     showToast(newLocked ? '🔒 Partido bloqueado' : '🔓 Partido desbloqueado', 'success');
   } catch (error) {
     showToast('Error al cambiar el bloqueo', 'error');
+  }
+}
+
+async function toggleChampionLock() {
+  const isCurrentlyLocked = !!((latestResults.locked || {})['champion']);
+  const newLocked = !isCurrentlyLocked;
+  try {
+    await apiCall('PUT', '/api/results/lock/champion', { locked: newLocked });
+    if (!latestResults.locked) latestResults.locked = {};
+    if (newLocked) {
+      latestResults.locked['champion'] = true;
+    } else {
+      delete latestResults.locked['champion'];
+    }
+    const lockBtn      = document.getElementById('champion-lock-btn');
+    const champSelect  = document.getElementById('admin-champion-select');
+    const statusText   = document.getElementById('champion-lock-status');
+    if (lockBtn) {
+      lockBtn.textContent = newLocked ? '🔒' : '🔓';
+      lockBtn.title = newLocked ? 'Desbloquear pronóstico de campeón para usuarios' : 'Bloquear pronóstico de campeón para usuarios';
+      lockBtn.classList.toggle('locked', newLocked);
+    }
+    if (champSelect) champSelect.disabled = newLocked;
+    if (statusText) {
+      statusText.textContent = newLocked
+        ? '🔒 Bloqueado — los usuarios no pueden cambiar su elección de campeón'
+        : '🔓 Habilitado — los usuarios pueden cambiar su elección de campeón';
+    }
+    applyPredictionsClosedUI();
+    showToast(newLocked ? '🔒 Campeón bloqueado para usuarios' : '🔓 Campeón desbloqueado para usuarios', 'success');
+  } catch (error) {
+    showToast('Error al cambiar el bloqueo del campeón', 'error');
   }
 }
 
