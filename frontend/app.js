@@ -199,14 +199,26 @@ function showRegisterModal(event) {
 
 // ===== UI UPDATE =====
 
-function updateUIAfterLogin() {
+async function updateUIAfterLogin() {
   const user = users[currentUser];
 
   document.getElementById('navbar').style.display = 'flex';
   document.getElementById('nav-user-text').textContent = user.nombre;
   document.getElementById('nav-admin').style.display = user.isAdmin ? 'block' : 'none';
 
+  try {
+    const resultsData = await apiCall('GET', '/api/results');
+    latestResults = {
+      results:          resultsData.results          || {},
+      overrides:        resultsData.overrides        || {},
+      locked:           resultsData.locked           || {},
+      predictionLocked: resultsData.predictionLocked || {},
+      predictionsClosed: !!resultsData.predictionsClosed
+    };
+  } catch (e) {}
+
   renderProdeUI();
+  applyPredictionsClosedUI();
   renderPrizesUI();
   if (user.isAdmin) renderAdminUI();
 }
@@ -310,12 +322,19 @@ function switchProdePhase(phase) {
 }
 
 function createMatchCard(match, pred) {
-  const id               = match._id;
-  const hasResult        = match.homeScore !== null && match.awayScore !== null;
-  const isFinished       = match.status === 'finished';
-  const isPredLocked     = !!((latestResults.predictionLocked || {})[id]);
-  const card             = document.createElement('div');
-  card.className         = 'match-card';
+  const id           = match._id;
+  const adminResult  = (latestResults.results || {})[id];
+  const homeScore    = (match.homeScore !== null && match.homeScore !== undefined && match.homeScore !== '')
+    ? match.homeScore
+    : (adminResult && adminResult.home !== '' && adminResult.home !== undefined && adminResult.home !== null ? adminResult.home : null);
+  const awayScore    = (match.awayScore !== null && match.awayScore !== undefined && match.awayScore !== '')
+    ? match.awayScore
+    : (adminResult && adminResult.away !== '' && adminResult.away !== undefined && adminResult.away !== null ? adminResult.away : null);
+  const hasResult    = homeScore !== null && awayScore !== null;
+  const isFinished   = match.status === 'finished' || hasResult;
+  const isPredLocked = !!((latestResults.predictionLocked || {})[id]);
+  const card         = document.createElement('div');
+  card.className     = 'match-card';
 
   let inputAttrs;
   if (isFinished) {
@@ -333,7 +352,7 @@ function createMatchCard(match, pred) {
     </div>
     <div class="match-teams">
       <div class="match-team">${escapeHTML(match.homeTeam)}</div>
-      <div class="match-vs${hasResult ? ' has-result' : ''}">${hasResult ? match.homeScore + ' – ' + match.awayScore : 'vs'}</div>
+      <div class="match-vs${hasResult ? ' has-result' : ''}">${hasResult ? homeScore + ' – ' + awayScore : 'vs'}</div>
       <div class="match-team">${escapeHTML(match.awayTeam)}</div>
     </div>
     <div class="match-inputs">
