@@ -211,11 +211,14 @@ async function renderAdminResults() {
 
   let results = {};
   let locked = {};
+  let predictionLocked = {};
   try {
     const data = await apiCall('GET', '/api/results');
     results = data.results || {};
     locked = data.locked || {};
+    predictionLocked = data.predictionLocked || {};
     latestResults.locked = locked;
+    latestResults.predictionLocked = predictionLocked;
     latestResults.predictionsClosed = !!data.predictionsClosed;
     updatePredictionsToggleBtn();
   } catch (e) {
@@ -289,7 +292,7 @@ async function renderAdminResults() {
 
     gMatches
       .sort((a, b) => new Date(a.date) - new Date(b.date))
-      .forEach(m => form.appendChild(buildResultCard(m, results[m._id], locked[m._id])));
+      .forEach(m => form.appendChild(buildResultCard(m, results[m._id], locked[m._id], predictionLocked[m._id])));
   });
 }
 
@@ -302,10 +305,11 @@ function switchAdminResultsPhase(phase) {
   });
 }
 
-function buildResultCard(match, res, isLocked) {
+function buildResultCard(match, res, isLocked, isPredictionLocked) {
   const id   = match._id;
   const r    = res || { home: '', away: '' };
   const locked = !!isLocked;
+  const predLocked = !!isPredictionLocked;
   const card = document.createElement('div');
   card.className = 'result-card' + (locked ? ' result-card--locked' : '');
   card.innerHTML = `
@@ -322,9 +326,17 @@ function buildResultCard(match, res, isLocked) {
       <button
         id="lock-btn-${id}"
         onclick="toggleMatchLock('${id}')"
-        title="${locked ? 'Desbloquear partido' : 'Bloquear partido'}"
+        title="${locked ? 'Desbloquear resultado' : 'Bloquear resultado'}"
         class="lock-result-btn${locked ? ' locked' : ''}">
         ${locked ? '🔒' : '🔓'}
+      </button>
+      <button
+        id="pred-lock-btn-${id}"
+        onclick="toggleMatchPredictionLock('${id}')"
+        title="${predLocked ? 'Habilitar pronósticos' : 'Bloquear pronósticos'}"
+        class="lock-result-btn${predLocked ? ' locked' : ''}"
+        style="font-size:13px;">
+        ${predLocked ? '🚫' : '✏️'}
       </button>
       <button
         id="clear-btn-${id}"
@@ -395,6 +407,29 @@ async function toggleChampionLock() {
     showToast(newLocked ? '🔒 Campeón bloqueado para usuarios' : '🔓 Campeón desbloqueado para usuarios', 'success');
   } catch (error) {
     showToast('Error al cambiar el bloqueo del campeón', 'error');
+  }
+}
+
+async function toggleMatchPredictionLock(matchId) {
+  const isCurrentlyLocked = !!((latestResults.predictionLocked || {})[matchId]);
+  const newLocked = !isCurrentlyLocked;
+  try {
+    await apiCall('PUT', `/api/results/prediction-lock/${matchId}`, { locked: newLocked });
+    if (!latestResults.predictionLocked) latestResults.predictionLocked = {};
+    if (newLocked) {
+      latestResults.predictionLocked[matchId] = true;
+    } else {
+      delete latestResults.predictionLocked[matchId];
+    }
+    const btn = document.getElementById(`pred-lock-btn-${matchId}`);
+    if (btn) {
+      btn.textContent = newLocked ? '🚫' : '✏️';
+      btn.title = newLocked ? 'Habilitar pronósticos' : 'Bloquear pronósticos';
+      btn.classList.toggle('locked', newLocked);
+    }
+    showToast(newLocked ? '🚫 Pronósticos bloqueados para este partido' : '✏️ Pronósticos habilitados para este partido', 'success');
+  } catch (error) {
+    showToast('Error al cambiar el bloqueo de pronósticos', 'error');
   }
 }
 

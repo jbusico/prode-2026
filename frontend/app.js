@@ -310,11 +310,21 @@ function switchProdePhase(phase) {
 }
 
 function createMatchCard(match, pred) {
-  const id         = match._id;
-  const hasResult  = match.homeScore !== null && match.awayScore !== null;
-  const isFinished = match.status === 'finished';
-  const card       = document.createElement('div');
-  card.className   = 'match-card';
+  const id               = match._id;
+  const hasResult        = match.homeScore !== null && match.awayScore !== null;
+  const isFinished       = match.status === 'finished';
+  const isPredLocked     = !!((latestResults.predictionLocked || {})[id]);
+  const card             = document.createElement('div');
+  card.className         = 'match-card';
+
+  let inputAttrs;
+  if (isFinished) {
+    inputAttrs = 'disabled title="Partido finalizado"';
+  } else if (isPredLocked) {
+    inputAttrs = 'disabled title="Pronósticos cerrados para este partido"';
+  } else {
+    inputAttrs = 'oninput="markProdeUnsaved()"';
+  }
 
   card.innerHTML = `
     <div class="match-meta">
@@ -328,12 +338,10 @@ function createMatchCard(match, pred) {
     </div>
     <div class="match-inputs">
       <input type="number" class="match-input" min="0" max="20"
-        value="${pred.home}" id="pred-home-${id}" placeholder="0"
-        ${isFinished ? 'disabled title="Partido finalizado"' : 'oninput="markProdeUnsaved()"'}>
+        value="${pred.home}" id="pred-home-${id}" placeholder="0" ${inputAttrs}>
       <div class="match-dash">–</div>
       <input type="number" class="match-input" min="0" max="20"
-        value="${pred.away}" id="pred-away-${id}" placeholder="0"
-        ${isFinished ? 'disabled title="Partido finalizado"' : 'oninput="markProdeUnsaved()"'}>
+        value="${pred.away}" id="pred-away-${id}" placeholder="0" ${inputAttrs}>
     </div>`;
   return card;
 }
@@ -350,6 +358,7 @@ function applyPredictionsClosedUI() {
 
   document.querySelectorAll('#matches-container .match-input').forEach(input => {
     if (input.title === 'Partido finalizado') return;
+    if (input.title === 'Pronósticos cerrados para este partido') return;
     input.disabled = closed;
     if (closed) {
       input.removeAttribute('oninput');
@@ -496,7 +505,7 @@ async function renderRanking() {
       apiCall('GET', '/api/results')
     ]);
 
-    latestResults = { results: resultsData.results || {}, overrides: resultsData.overrides || {}, locked: resultsData.locked || {}, predictionsClosed: !!resultsData.predictionsClosed };
+    latestResults = { results: resultsData.results || {}, overrides: resultsData.overrides || {}, locked: resultsData.locked || {}, predictionLocked: resultsData.predictionLocked || {}, predictionsClosed: !!resultsData.predictionsClosed };
     rankingUsers.forEach(u => { users[u.dni] = u; });
     applyPredictionsClosedUI();
 

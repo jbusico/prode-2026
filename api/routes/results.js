@@ -49,6 +49,28 @@ router.put('/lock/:matchId', requireAdmin, async (req, res) => {
   }
 });
 
+router.put('/prediction-lock/:matchId', requireAdmin, async (req, res) => {
+  try {
+    const { matchId } = req.params;
+    const { locked } = req.body;
+    const data = await Results.findOne({ key: 'global' });
+    const current = (data && data.predictionLocked) ? { ...data.predictionLocked } : {};
+    if (locked) {
+      current[matchId] = true;
+    } else {
+      delete current[matchId];
+    }
+    const updated = await Results.findOneAndUpdate(
+      { key: 'global' },
+      { predictionLocked: current, updatedAt: new Date() },
+      { new: true, upsert: true }
+    );
+    res.json({ predictionLocked: updated.predictionLocked });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 router.put('/', requireAdmin, async (req, res) => {
   try {
     const { results, overrides, locked } = req.body;

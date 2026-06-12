@@ -63,13 +63,18 @@ router.put('/:dni/predictions', requireAuth, async (req, res) => {
     if (!req.user.isAdmin && req.user.dni !== req.params.dni) {
       return res.status(403).json({ error: 'Sin permiso' });
     }
+    const { predictions } = req.body;
     if (!req.user.isAdmin) {
       const resultsDoc = await Results.findOne({ key: 'global' });
       if (resultsDoc && resultsDoc.predictionsClosed) {
         return res.status(403).json({ error: 'La carga de pronósticos está cerrada' });
       }
+      const predictionLocked = (resultsDoc && resultsDoc.predictionLocked) ? resultsDoc.predictionLocked : {};
+      const blockedMatch = predictions && Object.keys(predictions).find(id => predictionLocked[id]);
+      if (blockedMatch) {
+        return res.status(403).json({ error: 'Uno o más partidos tienen la carga de pronósticos bloqueada' });
+      }
     }
-    const { predictions } = req.body;
     const user = await User.findOneAndUpdate(
       { dni: req.params.dni },
       { predictions, saved: true, updatedAt: new Date() },

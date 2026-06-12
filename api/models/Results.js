@@ -5,6 +5,7 @@ const resultsSchema = new mongoose.Schema({
   results: { type: Object, default: {} },
   overrides: { type: Object, default: {} },
   locked: { type: Object, default: {} },
+  predictionLocked: { type: Object, default: {} },
   predictionsClosed: { type: Boolean, default: false },
   updatedAt: { type: Date, default: Date.now }
 });
