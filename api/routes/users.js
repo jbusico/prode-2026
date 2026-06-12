@@ -70,9 +70,17 @@ router.put('/:dni/predictions', requireAuth, async (req, res) => {
         return res.status(403).json({ error: 'La carga de pronósticos está cerrada' });
       }
       const predictionLocked = (resultsDoc && resultsDoc.predictionLocked) ? resultsDoc.predictionLocked : {};
-      const blockedMatch = predictions && Object.keys(predictions).find(id => predictionLocked[id]);
-      if (blockedMatch) {
-        return res.status(403).json({ error: 'Uno o más partidos tienen la carga de pronósticos bloqueada' });
+      const lockedIds = predictions ? Object.keys(predictions).filter(id => predictionLocked[id]) : [];
+      if (lockedIds.length > 0) {
+        const existingUser = await User.findOne({ dni: req.params.dni }).select('predictions');
+        const existingPreds = (existingUser && existingUser.predictions) || {};
+        lockedIds.forEach(id => {
+          if (existingPreds[id] !== undefined) {
+            predictions[id] = existingPreds[id];
+          } else {
+            delete predictions[id];
+          }
+        });
       }
     }
     const user = await User.findOneAndUpdate(
