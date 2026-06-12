@@ -455,7 +455,7 @@ async function saveProde() {
     return true;
   } catch (error) {
     console.error('Error guardando pronósticos:', error);
-    showToast('Error al guardar pronósticos', 'error');
+    showToast(error.message || 'Error al guardar pronósticos', 'error');
     return false;
   }
 }
